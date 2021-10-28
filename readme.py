@@ -26,6 +26,12 @@ for controlling the capture and WAV recording remotely.
 
 The script requires the numpy and SoapySDR Python libraries.
 
+## Example
+
+```
+$ python soapyfile.py -f 100.1e6 -r 1e6 --pcm16 -g 42 --output out --norecord
+```
+
 ## Usage
 
 { run("soapyfile.py --help") }
