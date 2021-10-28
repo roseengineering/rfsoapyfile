@@ -18,7 +18,7 @@ print(f"""
 
 # rfsoapyfile
 
-A Python 3 script for capturing and recording a SDR stream to a WAV file (or serve it to a HTTP audio stream).
+A Python 3 script for capturing and recording a SDR stream to a WAV file (or serving it to a HTTP audio stream).
 The script is threaded for high performance, especially
 on a Raspberry Pi.  The script includes a REST API
 for controlling the capture and WAV recording remotely.
