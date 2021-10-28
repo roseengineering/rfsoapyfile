@@ -33,9 +33,9 @@ The script requires the numpy and SoapySDR Python libraries.
 
 ## REST API
 
-The REST API is available off port 8080.  Use POST or PUT or change
-a value.  Use GET to view it.  If a boolean is needed, the following
-strings are accepted: y, n, yes, no, true, and false:
+The REST API is available off port 8080.  Use POST or PUT to change
+a program or radio setting.  Use GET to view it.  If a boolean is needed, the following
+strings are accepted: y, n, yes, no, true, and false.
 
 ```
 PUT /quit              <bool>      stop recording and terminate program, yes or no
