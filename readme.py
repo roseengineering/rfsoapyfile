@@ -3,8 +3,7 @@
 import os, subprocess 
 
 def run(command, language=''):
-    command = "PYTHONPATH=. python3 " + command
-    proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+    proc = subprocess.Popen("PYTHONPATH=. python3 " + command, shell=True, stdout=subprocess.PIPE)
     buf = proc.stdout.read().decode()
     proc.wait()
     return f"""

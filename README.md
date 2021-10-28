@@ -15,7 +15,7 @@ The script requires the numpy and SoapySDR Python libraries.
 
 
 ```
-$ PYTHONPATH=. python3 soapyfile.py --help
+$ soapyfile.py --help
 usage: soapyfile.py [-h] [-l] [-d DEVICE] [-f FREQUENCY] [-r RATE] [-g GAIN]
                     [-a] [--iq-swap] [--biastee] [--digital-agc]
                     [--offset-tune] [--direct-samp DIRECT_SAMP] [--pcm16]
