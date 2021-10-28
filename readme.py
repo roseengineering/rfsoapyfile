@@ -49,7 +49,7 @@ GET /rate              return sampling rate (Hz)
 GET /frequency         return center frequency (Hz)
 GET /gain              return gain (Hz)
 GET /agc               return AGC setting (yes or no)
-GET /pause             return pause status (yes or no)
+GET /pause             return whether recording is stopped (yes or no)
 GET /setting           return list of available soapy setting names
 GET /setting/<name>    return value of named soapy setting
 
