@@ -5,7 +5,7 @@
 A Python 3 script for capturing and recording a SDR stream to a WAV file (or HTTP audio stream).
 The script is threaded for high performance, especially
 on a Raspberry Pi.  The script includes a REST API
-for controlling the capture and recording remotely.
+for controlling the capture and WAV recording remotely.
 
 ## Dependencies
 
