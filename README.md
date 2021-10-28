@@ -8,7 +8,7 @@ on a Raspberry Pi.  The script includes a REST API
 for controlling the capture and WAV recording remotely.
 
 The script will save the stream in either RF64 or WAV file format.
-By default the recording uses WAV format.  The SDR specific 'auxi' 
+By default the recording uses the WAV format.  The SDR specific 'auxi' 
 metadata chunk is added to the file as well.
 
 ## Dependencies
