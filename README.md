@@ -11,7 +11,7 @@ The script will save the stream in either RF64 or WAV file format.
 By default the recording is saved in the WAV format using 32-bit floating point PCM IQ samples.
 To save using 16-bit PCM samples use the --pcm16 option.
 The SDR specific 'auxi' 
-metadata chunk, with record time and center frequency information, is added to the WAV file as well.
+metadata chunk, with record time and center frequency information, is added to the audio file as well.
 
 ## Dependencies
 
