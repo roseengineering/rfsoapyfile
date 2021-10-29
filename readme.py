@@ -23,8 +23,10 @@ on a Raspberry Pi.  The script includes a REST API
 for controlling the capture and WAV recording remotely.
 
 The script will save the stream in either RF64 or WAV file format.
-By default the recording uses the WAV format.  The SDR 'auxi' 
-metadata chunk, with time and center frequency information, is added to the file as well.
+By default the recording is saved in the WAV format using 32-bit floating point PCM IQ samples.
+To save using 16-bit PCM samples use the --pcm16 option.
+The SDR specific 'auxi' 
+metadata chunk, with record time and center frequency information, is added to the WAV file as well.
 
 ## Dependencies
 
