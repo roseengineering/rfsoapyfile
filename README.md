@@ -74,7 +74,7 @@ optional arguments:
 The REST API is available off port 8080.  Use POST or PUT to change
 a program or radio setting.  Use GET to view it.  If a boolean is needed, the following
 strings are accepted: y, n, yes, no, true, and false.  Unpausing the stream creates
-a new output file.   If the option --notimestamp is enabled, this means any existing
+a new output file.   If the option --notimestamp is enabled, this means any previously existing
 output file will be overwritten.
 
 ```
