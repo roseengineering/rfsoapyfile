@@ -75,7 +75,7 @@ The REST API is available off port 8080.  Use POST or PUT to change
 a program or radio setting.  Use GET to view it.  If a boolean is needed, the following
 strings are accepted: y, n, yes, no, true, and false.  Unpausing the stream creates
 a new WAV file.   If the option --notimestamp is enabled, this means any existing
-output WAV file will be overwritten.
+output file will be overwritten.
 
 ```
 PUT /quit              <bool>      stop recording and terminate program, yes or no
