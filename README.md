@@ -36,7 +36,7 @@ usage: soapyfile.py [-h] [-l] [-d DEVICE] [-f FREQUENCY] [-r RATE] [-g GAIN]
 
 optional arguments:
   -h, --help            show this help message and exit
-  -l, --list            list devices (default: False)
+  -l, --list            list available device names (default: False)
   -d DEVICE, --device DEVICE
                         device name (default: None)
   -f FREQUENCY, --frequency FREQUENCY
