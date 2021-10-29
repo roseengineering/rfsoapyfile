@@ -78,8 +78,8 @@ a new output file.   If the option --notimestamp is enabled, this means any prev
 output file will be overwritten.
 
 ```
-PUT /quit              <bool>      stop recording and terminate program, yes or no
-PUT /rate              <float>     set sampling rate (Hz) but only if recording is paused
+PUT /quit              <bool>      stop capture and terminate program, yes or no
+PUT /rate              <float>     set sampling rate (Hz) when recording paused
 PUT /frequency         <float>     set center frequency (Hz)
 PUT /gain              <float>     set gain (dB)
 PUT /agc               <bool>      enable agc, yes or no
@@ -90,6 +90,7 @@ GET /rate              return sampling rate (Hz)
 GET /frequency         return center frequency (Hz)
 GET /gain              return gain (Hz)
 GET /agc               return AGC setting (yes or no)
+GET /peak              return the latest ADC peak value (dBFS)
 GET /pause             return whether the recording is paused (yes or no)
 GET /setting           return list of available soapy setting names
 GET /setting/<name>    return value of named soapy setting
@@ -110,6 +111,7 @@ curl -d 100e6 localhost:8080/frequency
 curl localhost:8080/pause
 curl localhost:8080/agc
 curl localhost:8080/gain
+curl localhost:8080/peak
 curl localhost:8080/frequency
 ```
 
