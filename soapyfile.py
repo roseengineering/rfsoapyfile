@@ -28,10 +28,10 @@ def parse_args():
     # options
     parser.add_argument('--pcm16', action='store_true', help='write 16-bit PCM samples')
     parser.add_argument('--rf64', action='store_true', help='write RF64 file')
-    parser.add_argument('--notimestamp', action='store_true', help='do not add timestamp to filename')
+    parser.add_argument('--notimestamp', action='store_true', help='do not append timestamp to output file name')
     parser.add_argument('--pause', action='store_true', help='pause recording')
     parser.add_argument('--output', default='output', help='output file name')
-    parser.add_argument('--packet-size', default=1024, type=int, help='packet size')
+    parser.add_argument('--packet-size', default=1024, type=int, help='packet size in bytes')
     parser.add_argument('--buffer-size', default=256, type=int, help='buffer size in MB')
 
     # rest server and peak meter
