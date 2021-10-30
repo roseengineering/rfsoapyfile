@@ -345,7 +345,6 @@ def server(payload):
             else:
                self.text_response('Not Found', code=404)
 
-
     class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
         daemon_threads = True
 
