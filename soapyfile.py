@@ -165,6 +165,61 @@ def get_radio_setting(radio, name):
         return radio.readSetting(name) 
 
 
+# WAV functions
+
+def wav_systemtime(): 
+    ts = datetime.utcnow()
+    dow = (ts.weekday() + 1) % 7 # monday=0 for weekday(), sunday=0 for auxi
+    msec = ts.microsecond // 1000
+    return (ts.year, ts.month, dow, ts.day, ts.hour, ts.minute, ts.second, msec)
+
+
+def wav_header(sample_bytes, freq, rate, rf64, data_size=None, **kw):
+    MAX_UINT32 = 0xffffffff
+    MAX_UINT64 = 0xffffffffffffffff
+    data_size = MAX_UINT64 if data_size is None else data_size
+
+    # setup
+    channels = 2
+    block_align = channels * sample_bytes
+
+    # fmt
+    fmt_format = 3 if sample_bytes == 4 else 1
+    byte_rate = rate * block_align
+    bits_per_sample = 8 * sample_bytes
+    fmt_data = pack('<HHIIHH', fmt_format, channels, 
+               rate, byte_rate, block_align, bits_per_sample)
+
+    # auxi
+    start_time = pack('<HHHHHHHH', *wav_systemtime())
+    auxi_data = pack('<16s16sIIIIIIIII', start_time, start_time,
+                freq, rate, 0, rate, 0, 0, 0, 0, 0)
+
+    # riff
+    riff_data = b'WAVE'
+    riff_data += pack('<4sI', b'fmt ', len(fmt_data)) + fmt_data
+    riff_data += pack('<4sI', b'auxi', len(auxi_data)) + auxi_data
+
+    if rf64:
+        # ds64
+        ds64_format = '<QQQ'
+        sample_count = data_size // block_align
+        riff_size = data_size + len(riff_data) + 16 + calcsize(ds64_format)
+        ds64_data = pack(ds64_format, min(riff_size, MAX_UINT64), data_size, sample_count)
+
+        # riff continued
+        riff_data += pack('<4sI', b'ds64', len(ds64_data)) + ds64_data
+        riff_data += pack('<4sI', b'data', MAX_UINT32)
+        riff_size = MAX_UINT32
+        buf = pack('<4sI', b'RF64', riff_size) + riff_data
+    else:
+        riff_data += pack('<4sI', b'data', min(data_size, MAX_UINT32))
+        riff_size = data_size + len(riff_data)
+        buf = pack('<4sI', b'RIFF', min(riff_size, MAX_UINT32)) + riff_data
+
+    return buf
+
+
 #########################
 # web server
 #########################
@@ -325,59 +380,6 @@ def meter(payload, q):
 #########################
 # writer
 #########################
-
-def wav_systemtime(): 
-    ts = datetime.utcnow()
-    dow = (ts.weekday() + 1) % 7 # monday=0 for weekday(), sunday=0 for auxi
-    msec = ts.microsecond // 1000
-    return (ts.year, ts.month, dow, ts.day, ts.hour, ts.minute, ts.second, msec)
-
-
-def wav_header(sample_bytes, freq, rate, rf64, data_size=None, **kw):
-    MAX_UINT32 = 0xffffffff
-    MAX_UINT64 = 0xffffffffffffffff
-    data_size = MAX_UINT64 if data_size is None else data_size
-
-    # setup
-    channels = 2
-    block_align = channels * sample_bytes
-
-    # fmt
-    fmt_format = 3 if sample_bytes == 4 else 1
-    byte_rate = rate * block_align
-    bits_per_sample = 8 * sample_bytes
-    fmt_data = pack('<HHIIHH', fmt_format, channels, 
-               rate, byte_rate, block_align, bits_per_sample)
-
-    # auxi
-    start_time = pack('<HHHHHHHH', *wav_systemtime())
-    auxi_data = pack('<16s16sIIIIIIIII', start_time, start_time,
-                freq, rate, 0, rate, 0, 0, 0, 0, 0)
-
-    # riff
-    riff_data = b'WAVE'
-    riff_data += pack('<4sI', b'fmt ', len(fmt_data)) + fmt_data
-    riff_data += pack('<4sI', b'auxi', len(auxi_data)) + auxi_data
-
-    if rf64:
-        # ds64
-        ds64_format = '<QQQ'
-        sample_count = data_size // block_align
-        riff_size = data_size + len(riff_data) + 16 + calcsize(ds64_format)
-        ds64_data = pack(ds64_format, min(riff_size, MAX_UINT64), data_size, sample_count)
-
-        # riff continued
-        riff_data += pack('<4sI', b'ds64', len(ds64_data)) + ds64_data
-        riff_data += pack('<4sI', b'data', MAX_UINT32)
-        riff_size = MAX_UINT32
-        buf = pack('<4sI', b'RF64', riff_size) + riff_data
-    else:
-        riff_data += pack('<4sI', b'data', min(data_size, MAX_UINT32))
-        riff_size = data_size + len(riff_data)
-        buf = pack('<4sI', b'RIFF', min(riff_size, MAX_UINT32)) + riff_data
-
-    return buf
-
 
 def record(payload, q):
     sample_bytes = payload['sample_bytes']
