@@ -100,6 +100,9 @@ My Raspberry Pi 3A+ is able to support up to a 1.5MB sample rate with the RTLSDR
 While my Raspberry Pi 4B is able to support up to a 1.7MB sample rate with the RTLSDR.
 
 ![htop command](res/pi4b.png)
+
+The Raspberry Pi Zero W Version 1 only has one core, so threading does not help.
+Version 2 of the Zero has five cores, however, but I do not have one to test against.
 """)
 
 
