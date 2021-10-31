@@ -271,15 +271,15 @@ def server(payload):
             self.text_response()
 
         def do_PUT(self):
-            quit = False
             path = self.path.split('/')[1:]
             length = int(self.headers.get('Content-Length', 0))
             text = self.rfile.read(length).decode()
             if self.path == '/quit':
                 if abool(text) is not None:
+                    self.text_response()
                     if abool(text):
-                        quit = True
-                    return self.text_response()
+                        payload['quit'].set()
+                    return
             elif self.path == '/rate':
                 if afloat(text) is not None and payload['pause'].is_set():
                     set_sample_rate(radio, afloat(text)) 
@@ -310,7 +310,6 @@ def server(payload):
             else:
                 return self.text_response('Not Found', code=404)
             self.text_response(None)
-            if quit: payload['quit'].set()
 
         do_POST = do_PUT
 
