@@ -105,7 +105,7 @@ GET /f32               return a 32-bit floating point PCM WAV HTTP audio stream
 Here are some sample curl commands:
 
 ```
-curl -i localhost:8080/f32 --output out.wav
+curl localhost:8080/f32 --output out.wav
 curl -d yes localhost:8080/agc
 curl -d yes localhost:8080/quit
 curl -d yes localhost:8080/pause
@@ -118,7 +118,7 @@ curl localhost:8080/peak
 curl localhost:8080/frequency
 ```
 
-For example, running the following curl command I get:
+For example, running the following curl commands I get:
 
 ```
 $ curl localhost:8080/setting
@@ -127,6 +127,19 @@ offset_tune: false
 iq_swap: false
 digital_agc: false
 biastee: false
+```
+
+```
+$ curl -i localhost:8080/f32 
+HTTP/1.1 200 OK
+Server: BaseHTTP/0.6 Python/3.7.3
+Date: Sun, 31 Oct 2021 15:11:10 GMT
+Transfer-Encoding: chunked
+Content-Type: audio/wav
+
+Warning: Binary output can mess up your terminal. Use "--output -" to tell 
+Warning: curl to output it to your terminal anyway, or consider "--output 
+Warning: <FILE>" to save to a file.
 ```
 
 ## Benchmarks
