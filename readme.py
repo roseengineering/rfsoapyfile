@@ -139,7 +139,7 @@ it could support was a 300K sampling rate.
 
 ![htop command](res/pizero1.png)
 
-Version 2 of the Zero has five cores, however, but I do not have one to test against.
+Version 2 of the Zero has four cores, however, but I do not have one to test against.
 """)
 
 
