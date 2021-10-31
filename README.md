@@ -96,11 +96,11 @@ GET /gain              return gain (Hz)
 GET /agc               return AGC setting (bool)
 GET /peak              return the latest ADC peak value (dBFS)
 GET /pause             return whether the file recording is paused (bool)
-GET /setting           return list of available soapy setting names and their values
-GET /setting/<name>    return value of named soapy setting
+GET /setting           return a list of the available SDR soapy settings and their values
+GET /setting/<name>    return the value of the named soapy SDR setting
 
 GET /s16               return a 16-bit integer PCM WAV HTTP audio stream
-GET /f32               return a 32-bit floating point PCM WAV HTTP audio stream
+GET /f32               return a 32-bit IEEE floating point PCM WAV HTTP audio stream
 ```
 
 Here are some sample curl commands:
