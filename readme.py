@@ -94,6 +94,13 @@ curl localhost:8080/frequency
 For example, running the following curl commands I get:
 
 ```
+$ curl -d 103e6 localhost:8080/frequency
+OK
+$ curl localhost:8080/frequency
+103000000
+```
+
+```
 $ curl localhost:8080/setting
 direct_samp: 0
 offset_tune: false
