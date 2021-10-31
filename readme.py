@@ -17,7 +17,7 @@ print(f"""
 
 # rfsoapyfile
 
-A Python 3 script for capturing and recording a SDR stream to a WAV file (or serving it as a HTTP audio stream).
+A Python 3 script for capturing and recording a SDR stream to a WAV file, or serving it as a HTTP audio stream.
 The script is threaded for high performance, especially
 on a Raspberry Pi.  The script includes a REST API
 for controlling the capture and WAV recording remotely.
@@ -65,9 +65,9 @@ PUT /setting/<name>    <string>    change named soapy setting
 GET /rate              return sampling rate (Hz)
 GET /frequency         return center frequency (Hz)
 GET /gain              return gain (Hz)
-GET /agc               return AGC setting (yes or no)
+GET /agc               return AGC setting (bool)
 GET /peak              return the latest ADC peak value (dBFS)
-GET /pause             return whether the recording is paused (yes or no)
+GET /pause             return whether the recording is paused (bool)
 GET /setting           return list of available soapy setting names and their values
 GET /setting/<name>    return value of named soapy setting
 
@@ -80,8 +80,9 @@ Here are some sample curl commands:
 ```
 curl localhost:8080/f32 --output out.wav
 curl -d yes localhost:8080/agc
-curl -d yes localhost:8080/quit
-curl -d yes localhost:8080/pause
+curl -d y localhost:8080/quit
+curl -d n localhost:8080/pause
+curl -d true localhost:8080/pause
 curl -d 40.1 localhost:8080/gain
 curl -d 100e6 localhost:8080/frequency
 curl localhost:8080/pause
