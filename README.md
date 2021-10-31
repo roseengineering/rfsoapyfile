@@ -124,7 +124,7 @@ My Raspberry Pi 3A+ is able to support up to a 1.5MB sample rate with the RTLSDR
 
 ![htop command](res/pi3aplus.png)
 
-While my Raspberry Pi 4B is able to support up to a 1.5MB sample rate with the RTLSDR.
+While my Raspberry Pi 4B is able to support up to a 1.7MB sample rate with the RTLSDR.
 
 ![htop command](res/pi4b.png)
 
