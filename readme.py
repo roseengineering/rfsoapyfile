@@ -55,12 +55,12 @@ output file of the same name will be overwritten.
 
 ```
 PUT /quit              <bool>      stop capture and terminate program, yes or no
-PUT /rate              <float>     set sampling rate (Hz) when recording paused
+PUT /rate              <float>     set sampling rate (Hz), if recording paused
 PUT /frequency         <float>     set center frequency (Hz)
 PUT /gain              <float>     set gain (dB)
 PUT /agc               <bool>      enable agc, yes or no
 PUT /pause             <bool>      pause recording, yes or no
-PUT /setting/<name>    <string>    change named soapy setting
+PUT /setting/<name>    <string>    change named soapy SDR setting
 
 GET /rate              return sampling rate (Hz)
 GET /frequency         return center frequency (Hz)
