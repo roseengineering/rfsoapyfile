@@ -95,16 +95,16 @@ GET /gain              return gain (Hz)
 GET /agc               return AGC setting (yes or no)
 GET /peak              return the latest ADC peak value (dBFS)
 GET /pause             return whether the recording is paused (yes or no)
-GET /setting           return list of available soapy setting names
+GET /setting           return list of available soapy setting names and their values
 GET /setting/<name>    return value of named soapy setting
 
 GET /s16               return a 16-bit integer PCM WAV HTTP audio stream
 GET /f32               return a 32-bit floating point PCM WAV HTTP audio stream
 ```
 
-Here are some examples using curl:
+Here are some sample curl commands:
 
-```bash
+```
 curl -i localhost:8080/f32 --output out.wav
 curl -d yes localhost:8080/agc
 curl -d yes localhost:8080/quit
@@ -116,6 +116,17 @@ curl localhost:8080/agc
 curl localhost:8080/gain
 curl localhost:8080/peak
 curl localhost:8080/frequency
+```
+
+For example, running the following curl command I get:
+
+```
+$ curl localhost:8080/setting
+direct_samp: 0
+offset_tune: false
+iq_swap: false
+digital_agc: false
+biastee: false
 ```
 
 ## Benchmarks
