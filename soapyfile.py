@@ -316,7 +316,10 @@ def server(payload):
 
         def do_GET(self):
             path = self.path.split('/')[1:]
-            if self.path == '/rate':
+            if self.path == '/quit':
+               data = tobool(payload['pause'].is_set())
+               self.text_response(data)
+            elif self.path == '/rate':
                self.text_response(get_sample_rate(radio))
             elif self.path == '/frequency':
                self.text_response(get_frequency(radio))
