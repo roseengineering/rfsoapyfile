@@ -7,11 +7,14 @@ The script is threaded for high performance, especially
 on a Raspberry Pi.  The script includes a REST API
 for controlling the capture and WAV recording remotely.
 
-The script will save the stream in either RF64 or WAV file format.
+The script will save the WAV stream in either the RF64 or WAV(32) file format.
 By default the recording is saved in the WAV format using 32-bit floating point PCM IQ samples.
 To save using 16-bit PCM samples use the --pcm16 option.
 The SDR specific 'auxi' 
-metadata chunk, with record time and center frequency information, is added to the audio file as well.
+metadata chunk, with record time and center frequency information, is added to the WAV audio file as well.
+
+To quit the script and close the recording type control-C, or use the /quit REST call.
+
 
 ## Dependencies
 
@@ -20,7 +23,7 @@ The script requires the numpy and SoapySDR Python libraries.
 ## Example
 
 ```
-$ python soapyfile.py -f 100.1e6 -r 1e6 --pcm16 -g 42 --output out --pause
+$ python3 soapyfile.py -f 100.1e6 -r 1e6 --pcm16 -g 42 --output out --pause
 ```
 
 ## Usage
@@ -73,7 +76,7 @@ optional arguments:
 
 The REST API is available off port 8080.  Use POST or PUT to change
 a program or radio setting.  Use GET to view it.  If a boolean is needed, the following
-strings are accepted: y, n, yes, no, true, and false.  Unpausing the stream creates
+strings are accepted: y, n, yes, no, true, and false.  Pausing the recording closes the WAV output file, while unpausing the recording creates
 a new output file.   If the option --notimestamp is enabled, this means any previously existing
 output file will be overwritten.
 
@@ -115,4 +118,13 @@ curl localhost:8080/peak
 curl localhost:8080/frequency
 ```
 
+## Benchmarks
+
+My Raspberry Pi 3A+ is able to support up to a 1.5MB sample rate with the RTLSDR before it overflows.  Here is the core usage:
+
+![htop command](res/pi3aplus.png)
+
+While my Raspberry Pi 4B is able to support up to a 1.5MB sample rate with the RTLSDR.
+
+![htop command](res/pi4b.png)
 
