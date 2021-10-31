@@ -126,15 +126,16 @@ Warning: <FILE>" to save to a file.
 
 ## Benchmarks
 
-My Raspberry Pi 3A+ is able to support up to a 1.5MB sample rate with the RTLSDR before it overflows.  Here is the core usage:
+My Raspberry Pi 3A+ is able to support up to a 1.5M sample rate with the RTLSDR before it overflows.  Here is the core usage:
 
 ![htop command](res/pi3aplus.png)
 
-While my Raspberry Pi 4B is able to support up to a 1.6MB sample rate with the RTLSDR.
+While my Raspberry Pi 4B is able to support up to a 1.6M sample rate with the RTLSDR.
 
 ![htop command](res/pi4b.png)
 
-The Raspberry Pi Zero W Version 1 only has one core, so threading does not help.
+The Raspberry Pi Zero W Version 1 only has one core, so threading does not help. The best
+it could support was a 300K sampling rate.
 
 ![htop command](res/pizero1.png)
 
