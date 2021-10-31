@@ -23,7 +23,7 @@ The script requires the numpy and SoapySDR Python libraries.
 ## Example
 
 ```
-$ python3 soapyfile.py -f 100.1e6 -r 1e6 --pcm16 -g 42 --output out --pause
+$ python3 soapyfile.py -f 100.1e6 -r 1e6 --pcm16 -g 42 --output out
 ```
 
 ## Usage
