@@ -78,7 +78,7 @@ The REST API is available off port 8080.  Use POST or PUT to change
 a program or radio setting.  Use GET to view it.  If a boolean is needed, the following
 strings are accepted: y, n, yes, no, true, and false.  Pausing the recording closes the WAV output file, while unpausing the recording creates
 a new output file.   If the option --notimestamp is enabled, this means any previously existing
-output file of the same name will be overwritten.
+output file of the same name will be overwritten.  The SDR stream is always being captured even when the recording is paused.
 
 ```
 PUT /quit              <bool>      stop capture and terminate program, yes or no
@@ -86,7 +86,7 @@ PUT /rate              <float>     set sampling rate (Hz), if recording paused
 PUT /frequency         <float>     set center frequency (Hz)
 PUT /gain              <float>     set gain (dB)
 PUT /agc               <bool>      enable agc, yes or no
-PUT /pause             <bool>      pause recording, yes or no
+PUT /pause             <bool>      pause the file recording, yes or no
 PUT /setting/<name>    <string>    change named soapy SDR setting
 
 GET /rate              return sampling rate (Hz)
@@ -94,7 +94,7 @@ GET /frequency         return center frequency (Hz)
 GET /gain              return gain (Hz)
 GET /agc               return AGC setting (bool)
 GET /peak              return the latest ADC peak value (dBFS)
-GET /pause             return whether the recording is paused (bool)
+GET /pause             return whether the file recording is paused (bool)
 GET /setting           return list of available soapy setting names and their values
 GET /setting/<name>    return value of named soapy setting
 
