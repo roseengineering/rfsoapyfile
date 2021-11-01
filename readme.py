@@ -54,6 +54,13 @@ a new output file.   If the option --notimestamp is enabled, this means any prev
 output file of the same name will be overwritten.
 Also, the SDR stream is always being captured even when the recording is paused.
 
+The IQ data is also streamed out of URL paths /f32 and /s16.
+The output is always in WAV(32) format.  Run soapyfile with the --pause option if
+you just want stream it over HTTP.  (No SDR program I know of currently supports HTTP streams
+but it maybe useful for remote operation or sharing a stream in real time.  Beware, wifi might raise
+the noise floor, requiring the gain be set to a lower value.)
+
+
 ```
 PUT /quit              <bool>      stop capture and terminate program, yes or no
 PUT /rate              <float>     set sampling rate (Hz), if recording paused
