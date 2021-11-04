@@ -3,7 +3,7 @@
 import os, subprocess 
 
 def run(command, language=''):
-    proc = subprocess.Popen("PYTHONPATH=. python3 " + command, shell=True, stdout=subprocess.PIPE)
+    proc = subprocess.Popen("PYTHONPATH=. python3 soapyfile/" + command, shell=True, stdout=subprocess.PIPE)
     buf = proc.stdout.read().decode()
     proc.wait()
     return f"""
@@ -38,8 +38,16 @@ The script requires the numpy and SoapySDR Python libraries.
 ## Example
 
 ```
-$ python3 soapyfile.py -f 100.1e6 -r 1e6 --pcm16 -g 42 --output out
+$ soapyfile.py -f 100.1e6 -r 1e6 --pcm16 -g 42 --output out
 ```
+
+## Installation
+
+Either copy the file 'soapyfile/soapyfile.py' whereevery you want it
+and execute it directly using python or
+install soapyfile.py using pip: run "pip install ." in the main repository directory
+and then to run type "soapyfile.py" in a shell.
+
 
 ## Usage
 
@@ -147,6 +155,13 @@ it could support was a 300K sampling rate.
 ![htop command](res/pizero1.png)
 
 Version 2 of the Zero has four cores, however I do not have one to test against.
+
+## Notes
+
+The script uses the threading library to provide multithreading.  Despite the GIL lock
+using this library was much faster than using the multiprocessing library performance-wise.
+The need to copy streaming data across process spaces was probably too much of a hit.
+
 """)
 
 
