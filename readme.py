@@ -44,7 +44,7 @@ $ soapyfile.py -f 100.1e6 -r 1e6 --pcm16 -g 42 --output out
 ## Installation
 
 Either 1) copy the file 'soapyfile/soapyfile.py' to where you want it
-and then execute it directly with Python or 2)
+and then execute it directly or 2)
 install soapyfile.py using pip.  Specifically, run "pip install ." in the main 
 repository directory and then run "soapyfile.py" in a shell.
 
