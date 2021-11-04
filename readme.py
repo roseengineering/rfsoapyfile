@@ -56,8 +56,8 @@ Also, the SDR stream is always being captured even when the recording is paused.
 
 The IQ data is streamed out of URL paths /f32 and /s16.
 This output is always in WAV(32) format.  Run soapyfile with the --pause option if
-you only want to stream over HTTP.  (No SDR program that I know of currently supports HTTP streams
-but it maybe useful for remote operation or sharing a stream in real time.  Beware, wifi might raise
+you only want to stream over HTTP.  (No SDR program that I know of currently supports HTTP streams,
+however it might be useful for remote operation or sharing a stream in real time.  Beware, wifi might raise
 the noise floor, requiring the gain be set to a lower value.)
 
 
