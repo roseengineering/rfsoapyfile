@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='soapyfile',
     version='0.1.0',
-    author='George MagirosLiu',
+    author='George Magiros',
     author_email='gmagiros@gmail.com',
     url='https://github.com/roseengineering/rfsoapyfile',
     description='Record SDR to wav file using soapysdr library',
