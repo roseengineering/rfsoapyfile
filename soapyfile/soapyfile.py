@@ -545,15 +545,23 @@ def main():
     SoapySDR.registerLogHandler(log_handler)
 
     # enumerate
-    available = [ d['driver'] for d in SoapySDR.Device.enumerate() ]
+    available = SoapySDR.Device.enumerate()
     if not available:
         println('No radio devices available.')
         return 
 
     # list device
     if args.list:
-        for i, name in enumerate(available):
-            println('{}. {}'.format(i+1, name))
+        indent = 35
+        print(f'{"Device String":{indent}s} Label')
+        for d in available:
+            driver = d['driver']
+            label = d['label']
+            device_string = f'driver={driver}'
+            for name in [ 'device_id', 'serial' ]:
+                if name in d:
+                    device_string += f',{name}={d[name]}'
+            println(f'{device_string:{indent}s} {label}')
         return
 
     # open radio
