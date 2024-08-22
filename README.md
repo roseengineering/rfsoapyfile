@@ -33,7 +33,8 @@ Either
 1) copy the file 'soapyfile/soapyfile.py' to where ever you want it
 and then execute it directly using "python soapyfile.py" or 
 
-2) install soapyfile using pip.  Specifically, cd into the directory where you cloned this repository, and then run "pip install .", note the dot.  Now you can run "soapyfile" as a normal command in the shell.
+2) install soapyfile using pip.  Specifically, cd into the directory where you cloned this repository, and then run "pip install .", note the dot.
+Or you can use "pip install git+https://github.com/roseengineering/rfsoapyfile".  Now you can run "soapyfile" as a normal command in the shell.
 
 
 ## Usage
