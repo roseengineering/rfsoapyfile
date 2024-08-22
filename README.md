@@ -87,7 +87,7 @@ optional arguments:
 
 The REST API is available off port 8080.  Use POST or PUT to change
 a program or radio setting.  Use GET to view it.  If a boolean is needed, the following
-strings are accepted: y, n, yes, no, true, and false.  Pausing the recording closes the WAV output file, while unpausing the recording creates
+strings are accepted: y, n, yes, no, true, false, 1 and 0.  Pausing the recording closes the WAV output file, while unpausing the recording creates
 a new output file.   If the option --notimestamp is enabled, this means any previously existing
 output file of the same name will be overwritten.
 Also, the SDR stream is always being captured even when the recording is paused.

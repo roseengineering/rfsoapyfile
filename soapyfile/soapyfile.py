@@ -54,18 +54,14 @@ def afloat(text):
 
 def abool(text):
     text = text.strip().lower()
-    if text == 'y' or text == 'yes' or text == 'true':
+    if text == 'y' or text == 'yes' or text == 'true' or text == '1':
         return True
-    if text == 'n' or text == 'no' or text == 'false':
+    if text == 'n' or text == 'no' or text == 'false' or text == '0':
         return False
 
 
 def tobool(val):
     return 'true' if val else 'false'
-
-
-def db(val):
-    return 20 * np.log10(val) if val else -np.inf
 
 
 def println(buf):
@@ -328,7 +324,7 @@ def server(payload):
             elif self.path == '/agc':
                self.text_response(tobool(get_gain_mode(radio)))
             elif self.path == '/peak':
-               data = '{:.2f}'.format(db(payload['peak']))
+               data = '{:.2f}'.format(payload['peak'])
                self.text_response(data)
             elif self.path == '/pause':
                data = tobool(payload['pause'].is_set())
@@ -363,19 +359,20 @@ def server(payload):
 #########################
 
 def meter(payload, q):
+    resolution = np.finfo(np.float32).resolution
     refresh = 2 * payload['refresh'] * payload['rate']
-    level = 0
+    peak = 0
     count = 0
     while True:
         d = q.get()
         if refresh > 0:
-            level = max(level, abs(d).max())
+            peak = max(peak, abs(d).max())
             count += d.size
             if count > refresh:
-                payload['peak'] = level
+                payload['peak'] = 20 * np.log10(peak + resolution)
                 if not payload['quiet']:
-                    println('{:.2f} dB'.format(db(level)))
-                level = 0
+                    println('{:.2f} dBFS'.format(payload['peak']))
+                peak = 0
                 count = 0
 
 
