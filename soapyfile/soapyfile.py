@@ -538,6 +538,7 @@ def capture(radio):
 #########################
 
 def main():
+    global args
     args = parse_args()
     import SoapySDR
     from SoapySDR import SOAPY_SDR_RX, SOAPY_SDR_CF32
