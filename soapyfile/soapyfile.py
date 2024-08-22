@@ -538,6 +538,10 @@ def capture(radio):
 #########################
 
 def main():
+    args = parse_args()
+    import SoapySDR
+    from SoapySDR import SOAPY_SDR_RX, SOAPY_SDR_CF32
+
     SoapySDR.registerLogHandler(log_handler)
 
     # enumerate
@@ -561,8 +565,5 @@ def main():
 
 
 if __name__ == '__main__':
-    args = parse_args()
-    import SoapySDR
-    from SoapySDR import SOAPY_SDR_RX, SOAPY_SDR_CF32
     main()
 
