@@ -558,7 +558,7 @@ def main():
             driver = d['driver']
             label = d['label']
             device_string = f'driver={driver}'
-            for name in [ 'device_id', 'serial' ]:
+            for name in [ 'device_id', 'serial', 'hardware' ]:
                 if name in d:
                     device_string += f',{name}={d[name]}'
             println(f'{device_string:{indent}s} {label}')
