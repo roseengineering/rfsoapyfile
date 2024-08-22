@@ -12,7 +12,7 @@ setup(
     license='MIT',
     packages=find_packages(),
     entry_points={
-            'console_scripts': [ 'soapyfile.py = soapyfile:main' ]
+            'console_scripts': [ 'soapyfile = soapyfile:main' ]
     },
     classifiers=(
         "Programming Language :: Python :: 3",

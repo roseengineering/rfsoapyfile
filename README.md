@@ -23,23 +23,25 @@ The script requires the numpy and SoapySDR Python libraries.
 ## Example
 
 ```
-$ soapyfile.py -f 100.1e6 -r 1e6 --pcm16 -g 42 --output out
+$ soapyfile -f 100.1e6 -r 1e6 --pcm16 -g 42 --output out
 ```
 
 ## Installation
 
-Either 1) copy the file 'soapyfile/soapyfile.py' to where you want it
-and then execute it directly or 2)
-install soapyfile.py using pip.  Specifically, run "pip install ." in the main 
-repository directory and then run "soapyfile.py" in a shell.
+Either 
+
+1) copy the file 'soapyfile/soapyfile.py' to where ever you want it
+and then execute it directly using "python soapyfile.py" or 
+
+2) install soapyfile using pip.  Specifically, cd into the directory where you cloned this repository, and then run "pip install .", note the dot.  Now you can run "soapyfile" as a normal command in the shell.
 
 
 ## Usage
 
 
 ```
-$ soapyfile.py --help
-usage: soapyfile.py [-h] [-l] [-d DEVICE] [-f FREQUENCY] [-r RATE] [-g GAIN]
+$ soapyfile --help
+usage: soapyfile [-h] [-l] [-d DEVICE] [-f FREQUENCY] [-r RATE] [-g GAIN]
                     [-a] [--iq-swap] [--biastee] [--digital-agc]
                     [--offset-tune] [--direct-samp DIRECT_SAMP] [--pcm16]
                     [--rf64] [--notimestamp] [--pause] [--output OUTPUT]
