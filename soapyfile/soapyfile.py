@@ -17,7 +17,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-l', '--list', action='store_true', help='list available device names')
-    parser.add_argument('-d', '--device', help='device name')
+    parser.add_argument('-d', '--device', help='device string, eg driver=rtlsdr')
     parser.add_argument('-f', '--frequency', type=float, help='center frequency (Hz)')
     parser.add_argument('-r', '--rate', type=float, help='sampling rate (Hz)')
     parser.add_argument('-g', '--gain', type=float, help='front end gain (dB)')
