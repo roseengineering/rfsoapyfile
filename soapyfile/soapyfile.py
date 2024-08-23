@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 
-import os, sys, time
+import os
+import sys
+import time
+import datetime
 import argparse
 import numpy as np
 from struct import pack, calcsize
 from queue import Queue
 from threading import Thread, Event, Lock
-from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 
@@ -72,7 +74,7 @@ def println(buf):
 
 
 def timestamp():
-    return datetime.utcnow().strftime('%y%m%d%H%M%S')
+    return datetime.datetime.now(datetime.UTC).strftime('%y%m%d%H%M%S')
 
 
 # logger
@@ -88,7 +90,7 @@ def log_handler(log_level, message):
         7: "DEBUG",
         8: "TRACE",
         9: "SSI"}
-    ts = datetime.utcnow().strftime('%H:%M:%S')
+    ts = datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S')
     println("[{}] {}: {}".format(ts, log_text[log_level], message))
 
 
@@ -165,7 +167,7 @@ def get_radio_setting(radio, name):
 # WAV functions
 
 def wav_systemtime(): 
-    ts = datetime.utcnow()
+    ts = datetime.datetime.now(datetime.UTC)
     dow = (ts.weekday() + 1) % 7 # monday=0 for weekday(), sunday=0 for auxi
     msec = ts.microsecond // 1000
     return (ts.year, ts.month, dow, ts.day, ts.hour, ts.minute, ts.second, msec)
@@ -566,7 +568,7 @@ def main():
 
     # open radio
     device = args.device or available[0]
-    radio = SoapySDR.Device({ 'driver': device })
+    radio = SoapySDR.Device(device)
 
     # steam radio
     capture(radio)
