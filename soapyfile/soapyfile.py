@@ -8,9 +8,11 @@ import argparse
 import numpy as np
 from struct import pack, calcsize
 from queue import Queue
-from threading import Thread, Event, Lock
+from threading import Thread, Lock
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
+
+DEVICE_CHANNEL = 0
 
 
 def parse_args():
@@ -77,8 +79,6 @@ def timestamp():
     return datetime.datetime.now(datetime.UTC).strftime('%y%m%d%H%M%S')
 
 
-# logger
-
 def log_handler(log_level, message):
     log_text = {
         1: "FATAL",
@@ -94,9 +94,7 @@ def log_handler(log_level, message):
     println("[{}] {}: {}".format(ts, log_text[log_level], message))
 
 
-## setters
-
-DEVICE_CHANNEL = 0
+## soapysdr setters
 
 def set_gain_mode(radio, agc):
     try:
@@ -140,7 +138,7 @@ def set_radio_setting(radio, name, data):
         pass
 
 
-## getters
+## soapysdr getters
 
 def get_sample_rate(radio):
     return int(radio.getSampleRate(SOAPY_SDR_RX, DEVICE_CHANNEL))
@@ -173,7 +171,7 @@ def wav_systemtime():
     return (ts.year, ts.month, dow, ts.day, ts.hour, ts.minute, ts.second, msec)
 
 
-def wav_header(sample_bytes, freq, rate, rf64, data_size=None, **kw):
+def wav_header(sample_bytes, frequency, rate, rf64=False, data_size=None, **kw):
     MAX_UINT32 = 0xffffffff
     MAX_UINT64 = 0xffffffffffffffff
     data_size = MAX_UINT64 if data_size is None else data_size
@@ -192,7 +190,7 @@ def wav_header(sample_bytes, freq, rate, rf64, data_size=None, **kw):
     # auxi
     start_time = pack('<HHHHHHHH', *wav_systemtime())
     auxi_data = pack('<16s16sIIIIIIIII', start_time, start_time,
-                freq, rate, 0, rate, 0, 0, 0, 0, 0)
+                frequency, rate, 0, rate, 0, 0, 0, 0, 0)
 
     # riff
     riff_data = b'WAVE'
@@ -220,10 +218,82 @@ def wav_header(sample_bytes, freq, rate, rf64, data_size=None, **kw):
 
 
 #########################
+# singletons
+#########################
+
+
+
+class PeakMeter:
+    def __init__(self):
+        self.resolution = np.finfo(np.float32).resolution
+        self.peak_db = -np.inf
+
+    def initialize(self, state):
+        self.state = state
+
+    def refresh_count(self):
+        return 2 * self.state.refresh * self.state.rate  # two channels
+
+    def set_peak(self, peak):
+        self.peak_db = 20 * np.log10(peak + self.resolution)
+        if not self.state.quiet:
+            println('{:.2f} dBFS'.format(self.peak_db))
+    
+
+class QueueInventory:
+    def __init__(self):
+        self.lock = Lock()
+        self.inventory = []
+
+    def initialize(self, maxsize):
+        self.maxsize = maxsize 
+
+    def checkout_item(self):
+        q = Queue(maxsize=self.maxsize)
+        with self.lock:
+            self.inventory.append(q)
+        return q
+    
+    def return_item(self, q):
+        with self.lock:
+            self.inventory.remove(q)
+
+    def current(self):
+        with self.lock:
+            return list(self.inventory)
+ 
+
+class State:
+    def initialize(
+            self, refresh, quiet, pause, rate, 
+            frequency, radio, notimestamp, output,
+            hostname, port, rf64, sample_bytes, **kw):
+        self.refresh = refresh
+        self.quiet = quiet
+        self.pause = pause
+        self.rate = rate
+        self.frequency = frequency
+        self.radio = radio
+        self.notimestamp = notimestamp
+        self.output = output
+        self.hostname = hostname
+        self.sample_bytes = sample_bytes
+        self.port = port
+        self.rf64 = rf64
+        self.done = False
+        self.quit = False
+
+        
+queue_inventory = QueueInventory()
+peak_meter = PeakMeter()
+state = State()
+
+
+#########################
 # web server
 #########################
 
-def server(payload):
+def server():
 
     class HTTPRequestHandler(BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.1'
@@ -234,17 +304,16 @@ def server(payload):
             self.wfile.write(b'\r\n')
 
         def http_streaming(self, sample_bytes):
-            q = Queue(maxsize=payload['maxsize'])
-            with payload['qlock']:
-                payload['queues'].append(q)
+            q = queue_inventory.checkout_item()
             try:
                 self.send_response(200)
                 self.send_header('Transfer-Encoding', 'chunked')
                 self.send_header('Content-Type', 'audio/wav')
                 self.end_headers()
-                buf = wav_header(**dict(payload, **{ 
-                                 'sample_bytes': sample_bytes, 
-                                 'rf64': False }))
+                buf = wav_header(
+                    sample_bytes=sample_bytes, 
+                    frequency=state.frequency, 
+                    rate=state.rate)
                 self.send_chunk(buf)
                 while True:
                     d = q.get()
@@ -252,13 +321,14 @@ def server(payload):
                         d = np.ceil(0x8000 * d).astype(np.int16)
                     self.send_chunk(d.tobytes())
             except (BrokenPipeError, ConnectionResetError):
-                with payload['qlock']:
-                    payload['queues'].remove(q)
+                queue_inventory.return_item(q)
 
-        def text_response(self, data='OK', code=200):
-            if data is None:
+        def text_response(self, data=None, code=200, success=True):
+            if not success:
                data = 'Bad Request'
                code = 400 
+            elif data is None:
+               data = 'OK'
             data = (str(data).rstrip() + '\n').encode()
             self.send_response(code)
             self.send_header('Content-Type', 'text/plain')
@@ -273,84 +343,79 @@ def server(payload):
             path = self.path.split('/')[1:]
             length = int(self.headers.get('Content-Length', 0))
             text = self.rfile.read(length).decode()
+            success = False
             if self.path == '/quit':
                 if abool(text) is not None:
                     self.text_response()
-                    if abool(text):
-                        payload['quit'].set()
+                    state.quit = abool(text)
                     return
             elif self.path == '/rate':
-                if afloat(text) is not None and payload['pause'].is_set():
-                    set_sample_rate(radio, afloat(text)) 
-                    return self.text_response()
+                # recording must be paused to change the sampling rate
+                if afloat(text) is not None and state.pause:
+                    set_sample_rate(state.radio, afloat(text)) 
+                    success = True
             elif self.path == '/frequency':
                 if afloat(text) is not None:
-                    set_frequency(radio, afloat(text))
-                    return self.text_response()
+                    set_frequency(state.radio, afloat(text))
+                    success = True
             elif self.path == '/gain':
                 if afloat(text) is not None:
-                    set_gain_mode(radio, False)
+                    set_gain_mode(state.radio, False)
                     set_gain(radio, afloat(text))
-                    return self.text_response()
+                    success = True
             elif self.path == '/agc':
                 if abool(text) is not None:
-                    set_gain_mode(radio, abool(text))
-                    return self.text_response()
+                    set_gain_mode(state.radio, abool(text))
+                    success = True
             elif self.path == '/pause':
                 if abool(text) is not None:
-                    if abool(text):
-                        payload['pause'].set()
-                    else:
-                        payload['pause'].clear()
-                    return self.text_response()
+                    state.pause = abool(text)
+                    success = True
             elif path[0] == 'setting' and len(path) == 2: 
-                set_radio_setting(radio, path[1], text.strip())
-                return self.text_response()
+                set_radio_setting(state.radio, path[1], text.strip())
+                success = True
             else:
                 return self.text_response('Not Found', code=404)
-            self.text_response(None)
+            self.text_response(success=success)
 
         do_POST = do_PUT
 
         def do_GET(self):
+            data = None
             path = self.path.split('/')[1:]
             if self.path == '/quit':
-               data = tobool(payload['quit'].is_set())
-               self.text_response(data)
+               data = tobool(state.quit)
             elif self.path == '/rate':
-               self.text_response(get_sample_rate(radio))
+               data = get_sample_rate(state.radio)
             elif self.path == '/frequency':
-               self.text_response(get_frequency(radio))
+               data = get_frequency(state.radio)
             elif self.path == '/gain':
-               self.text_response(get_gain(radio))
+               data = get_gain(state.radio)
             elif self.path == '/agc':
-               self.text_response(tobool(get_gain_mode(radio)))
+               data = tobool(get_gain_mode(state.radio))
             elif self.path == '/peak':
-               data = '{:.2f}'.format(payload['peak'])
-               self.text_response(data)
+               data = '{:.2f}'.format(peak_meter.peak_db)
             elif self.path == '/pause':
-               data = tobool(payload['pause'].is_set())
-               self.text_response(data)
+               data = tobool(state.pause)
             elif path[0] == 'setting' and len(path) == 2:
-               self.text_response(get_radio_setting(radio, path[1]))
+               data = get_radio_setting(state.radio, path[1])
             elif self.path == '/setting':
                data = ''
-               for d in radio.getSettingInfo():
-                   value = radio.readSetting(d.key)
+               for d in state.radio.getSettingInfo():
+                   value = state.radio.readSetting(d.key)
                    data += '{}: {}\n'.format(d.key, value)
-               self.text_response(data)
             elif self.path == '/s16':
-               self.http_streaming(sample_bytes=2)
-            elif self.path == '/f32':
-               self.http_streaming(sample_bytes=4)
+               return self.http_streaming(sample_bytes=2)
+            elif self.path == '/cf32':
+               return self.http_streaming(sample_bytes=4)
             else:
-               self.text_response('Not Found', code=404)
+               return self.text_response('Not Found', code=404)
+            self.text_response(data)
 
     class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
         daemon_threads = True
 
-    radio = payload['radio']
-    address = payload['address']
+    address = (state.hostname, state.port)
     println('Starting server on host "{}" port {}'.format(*address))
     httpd = ThreadingHTTPServer(address, HTTPRequestHandler)
     httpd.serve_forever()
@@ -360,69 +425,77 @@ def server(payload):
 # peak meter
 #########################
 
-def meter(payload, q):
+
+
+
+###
+
+def meter():
+    q = queue_inventory.checkout_item()
     resolution = np.finfo(np.float32).resolution
-    refresh = 2 * payload['refresh'] * payload['rate']
     peak = 0
     count = 0
-    while True:
+    while peak_meter.refresh_count() > 0:
         d = q.get()
-        if refresh > 0:
-            peak = max(peak, abs(d).max())
-            count += d.size
-            if count > refresh:
-                payload['peak'] = 20 * np.log10(peak + resolution)
-                if not payload['quiet']:
-                    println('{:.2f} dBFS'.format(payload['peak']))
-                peak = 0
-                count = 0
+        peak = max(peak, abs(d).max())
+        count += d.size
+        if count > peak_meter.refresh_count():
+            peak_meter.set_peak(peak)
+            peak = 0
+            count = 0
+    queue_inventory.return_item(q)
 
 
 #########################
 # writer
 #########################
 
-def record(payload, q):
-    sample_bytes = payload['sample_bytes']
-
+def record(q):
     # get filename
-    basename, ext = os.path.splitext(payload['output'])
-    if not payload['notimestamp']:
+    basename, ext = os.path.splitext(state.output)
+    if not state.notimestamp:
         basename = '{}_{}'.format(basename, timestamp())
     filename = '{}{}'.format(basename, ext or '.wav')
 
     # open wav file
     println('Writing stream to WAV file: "{}".'.format(filename))
     wav_file = open(filename, "wb+")
-    wav_buf = wav_header(**payload)
+    param = {
+        'sample_bytes': state.sample_bytes, 
+        'frequency': state.frequency, 
+        'rate': state.rate, 
+         'rf64': state.rf64
+    }
+    wav_buf = wav_header(**param)
     wav_file.write(wav_buf)
 
     # begin recording
     try:
         data_size = 0
-        while not payload['quit'].is_set() and not payload['pause'].is_set():
+        while not state.quit and not state.pause:
             d = q.get()
-            if sample_bytes == 2:
+            if state.sample_bytes == 2:
                 d = np.ceil(0x8000 * d).astype(np.int16)
             wav_file.write(d)
             data_size += d.nbytes
-
         wav_file.seek(0)
-        wav_file.write(wav_header(data_size=data_size, **payload))
+        wav_file.write(wav_header(data_size=data_size, **param))
         wav_file.close()
         println('WAV file closed.')
     except OSError as e:
-        payload['quit'].set()
+        state.quit = True
         println('Fatal error: {}'.format(e))
 
 
-def writer(payload, q):
-    while not payload['quit'].is_set():
-        while not payload['quit'].is_set() and payload['pause'].is_set():
+def writer():
+    q = queue_inventory.checkout_item()
+    while not state.quit:
+        while not state.quit and state.pause:
             d = q.get()
-        if not payload['quit'].is_set():
-            record(payload, q)
-    payload['done'].set()
+        if not state.quit:
+            record(q)
+    state.done = True
+    queue_inventory.return_item(q)
 
 
 #########################
@@ -453,12 +526,13 @@ def capture(radio):
     if args.direct_samp: set_radio_setting(radio, 'direct_samp', args.direct_samp)
 
     # get info
-    rate = get_sample_rate(radio)
-    freq = get_frequency(radio)
+    args.rate = get_sample_rate(radio)
+    args.frequency = get_frequency(radio)
+    sample_bytes = 2 if args.pcm16 else 4
 
     # show info
-    println('Sampling Rate: {:11.6f} MHz'.format(rate / 1e6))
-    println('Frequency:     {:11.6f} MHz'.format(freq / 1e6))
+    println('Sampling Rate: {:11.6f} MHz'.format(args.rate / 1e6))
+    println('Frequency:     {:11.6f} MHz'.format(args.frequency / 1e6))
     println('AGC:           {:>11s}'.format(tobool(get_gain_mode(radio))))
     println('Gain:          {:11.4g} dB'.format(get_gain(radio)))
 
@@ -474,62 +548,39 @@ def capture(radio):
 
     # setup 
     maxsize = args.buffer_size * 2**20 // data.nbytes
-    q_writer = Queue(maxsize=maxsize)
-    q_meter = Queue(maxsize=maxsize)
+    queue_inventory.initialize(maxsize)
 
-    # payload
-    payload = {
-        'sample_bytes': 2 if args.pcm16 else 4,
-        'quiet': args.quiet,
-        'rf64': args.rf64,
-        'refresh': args.refresh,
-        'address': (args.hostname, args.port),
-        'output': args.output,
-        'notimestamp': args.notimestamp,
-        ####
-        'radio': radio,
-        'freq': freq,
-        'rate': rate,
-        'peak': np.nan,
-        ####
-        'maxsize': maxsize,
-        'queues': [],
-        'qlock': Lock(),
-        'pause': Event(),
-        'quit': Event(),
-        'done': Event()
-    }
-
-    # pause recording?
-    if args.pause:
-        payload['pause'].set()
+    # setup state
+    kw = args.__dict__
+    state.initialize(radio=radio, sample_bytes=sample_bytes, **kw)
+    
+    # setup peak meter
+    peak_meter.initialize(state)
 
     # start writer thread
-    payload['queues'].append(q_writer)
-    t_writer = Thread(target=writer, args=(payload, q_writer), daemon=True)
+    t_writer = Thread(target=writer, daemon=True)
     t_writer.start()
 
     # start peak meter thread
-    payload['queues'].append(q_meter)
-    t = Thread(target=meter, args=(payload, q_meter), daemon=True)
+    t = Thread(target=meter, daemon=True)
     t.start()
 
     # start webserver thread
-    t = Thread(target=server, args=(payload,), daemon=True)
+    t = Thread(target=server, daemon=True)
     t.start()
 
     # start stream
     stream = radio.setupStream(SOAPY_SDR_RX, SOAPY_SDR_CF32)
     radio.activateStream(stream) 
-    while not payload['done'].is_set():
+    while not state.done:
         try:
             radio.readStream(stream, [data], args.packet_size)
             d = data.copy()
-            for q in payload['queues']:
+            for q in queue_inventory.current():
                 q.put(d)
         except (KeyboardInterrupt, SystemError):
             println('\nCapture interrupted, quitting.')
-            payload['quit'].set()
+            state.quit = True
 
 
 #########################

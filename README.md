@@ -92,7 +92,7 @@ a new output file.   If the option --notimestamp is enabled, this means any prev
 output file of the same name will be overwritten.
 Also, the SDR stream is always being captured even when the recording is paused.
 
-The IQ data is streamed out of URL paths /f32 and /s16.
+The IQ data is streamed out of URL paths /cf32 and /s16.
 This output is always in WAV(32) format.  Run soapyfile with the --pause option if
 you only want to stream over HTTP.  (No SDR program that I know of currently supports HTTP streams,
 however it might be useful for remote operation or sharing a stream in real time.  Beware, wifi might raise
@@ -118,13 +118,13 @@ GET /setting           return a list of the available SDR soapy settings and the
 GET /setting/<name>    return the value of the named soapy SDR setting
 
 GET /s16               return a 16-bit integer PCM WAV HTTP audio stream
-GET /f32               return a 32-bit IEEE floating point PCM WAV HTTP audio stream
+GET /cf32              return a 32-bit IEEE floating point PCM WAV HTTP audio stream
 ```
 
 Here are some sample curl commands:
 
 ```
-curl localhost:8080/f32 --output out.wav
+curl localhost:8080/cf32 --output out.wav
 curl -d yes localhost:8080/agc
 curl -d y localhost:8080/quit
 curl -d n localhost:8080/pause
@@ -157,7 +157,7 @@ biastee: false
 ```
 
 ```
-$ curl -i localhost:8080/f32 
+$ curl -i localhost:8080/cf32 
 HTTP/1.1 200 OK
 Server: BaseHTTP/0.6 Python/3.7.3
 Date: Sun, 31 Oct 2021 15:11:10 GMT
