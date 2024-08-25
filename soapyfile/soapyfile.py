@@ -38,8 +38,8 @@ def parse_args():
     parser.add_argument('--output', default='output', help='output file name')
     parser.add_argument('--packet-size', default=1024, type=int, help='packet size in bytes')
     parser.add_argument('--buffer-size', default=256, type=int, help='buffer size in MB')
-    parser.add_argument('--rbw', default=10000, type=float, help='power resolution bandwidth (Hz)')
-    parser.add_argument('--integration', default=1, type=int, help='power integration time')
+    parser.add_argument('--rbw', default=25, type=float, help='power resolution bandwidth (Hz)')
+    parser.add_argument('--integration', default=.04, type=int, help='power integration time')
 
     # rest server and peak meter
     parser.add_argument('--hostname', default='0.0.0.0', help='REST server hostname')
@@ -468,7 +468,6 @@ def meter_power():
 
     fft_n = state.rate / state.rbw
     fft_n = int(2**np.ceil(np.log(fft_n) / np.log(2)))
-    fft_n = int(np.ceil(state.rate / state.rbw))
     fft_time = fft_n / state.rate # in seconds
     fft_freq = state.frequency + np.fft.fftshift(np.fft.fftfreq(fft_n, d=1/state.rate))
     fft_start = fft_freq[0]
@@ -480,7 +479,10 @@ def meter_power():
     average_count = int(np.ceil(state.integration / fft_time))
     total_samples = average_count * fft_n
     power = np.zeros((average_count, fft_n), dtype=np.float32)
-    print(total_samples)
+
+    print('fft N =', fft_n)
+    print('average =', average_count)
+    print('rbw =', state.rate / fft_n)
 
     row = 0
     col = 0
@@ -508,8 +510,8 @@ def meter_power():
                now = datetime.datetime.now(datetime.UTC)
                ds = now.strftime('%Y-%m-%d')
                ts = now.strftime('%H:%M:%S')
-               dbm = ' '.join(f'{d:.2f}' for d in ps)
-               text = f'{ds} {ts} {fft_start:.0f} {fft_stop:.0f} {fft_step:.0f} {total_samples} {dbm}\n'
+               dbm = ','.join(f'{d:.2f}' for d in ps)
+               text = f'{ds},{ts},{fft_start:.0f},{fft_stop:.0f},{fft_step:.0f},{total_samples},{dbm}\n'
                for q in power_queue_inventory.current():
                    q.put(text)
 
