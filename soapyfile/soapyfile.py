@@ -489,12 +489,12 @@ def meter_power():
     total_samples = average * fft_n
     power = np.zeros((average, fft_n), dtype=np.float32)
 
-    state.bin = fft_n
+    state.bins = fft_n
     state.rbw = state.rate / fft_n
     state.average = average
-    print(f'fft N = {state.bin}')
+    print(f'fft size = {state.bins}')
     print(f'average = {state.average}')
-    print(f'rbw = f{state.rbw:.2f}')
+    print(f'rbw = {state.rbw:.2f} Hz')
 
     row = 0
     col = 0
