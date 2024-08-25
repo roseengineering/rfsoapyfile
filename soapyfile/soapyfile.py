@@ -38,14 +38,16 @@ def parse_args():
     parser.add_argument('--output', default='output', help='output file name')
     parser.add_argument('--packet-size', default=1024, type=int, help='packet size in bytes')
     parser.add_argument('--buffer-size', default=256, type=int, help='buffer size in MB')
-    parser.add_argument('--rbw', default=25, type=float, help='power resolution bandwidth (Hz)')
-    parser.add_argument('--integration', default=.04, type=int, help='power integration time')
+    parser.add_argument('--bins', default=64, type=int, help='size of the fft to use, overrides rbw')
+    parser.add_argument('--rbw', type=float, help='power resolution bandwidth (Hz)')
+    parser.add_argument('--integration', default=1, type=float, help='power integration time')
 
     # rest server and peak meter
     parser.add_argument('--hostname', default='0.0.0.0', help='REST server hostname')
     parser.add_argument('--port', default=8080, type=int, help='REST server port number')
     parser.add_argument('--refresh', default=1, type=float, help='peak meter refresh (sec)')
-    parser.add_argument('--quiet', action='store_true', help='do not print peak values')
+    parser.add_argument('--meter', action='store_true', help='show streaming peak values')
+    parser.add_argument('--waterfall', action='store_true', help='show streaming ascii waterfall')
     return parser.parse_args()
 
 
@@ -253,12 +255,11 @@ class QueueInventory:
 
 class State:
     def initialize(
-            self, refresh, quiet, pause, rate, 
+            self, refresh, pause, rate, 
             frequency, radio, notimestamp, output,
             hostname, port, rf64, pcm16, rbw,
-            integration, **kw):
+            bins, integration, waterfall, **kw):
         self.refresh = refresh
-        self.quiet = quiet
         self.pause = pause
         self.rate = rate
         self.frequency = frequency
@@ -270,7 +271,9 @@ class State:
         self.port = port
         self.rf64 = rf64
         state.rbw = rbw
+        state.bins = bins
         state.integration = integration
+        state.waterfall = waterfall
         self.done = False
         self.quit = False
 
@@ -320,7 +323,7 @@ def server():
                 self.end_headers()
                 while True:
                     value = q.get()
-                    text = f'{value:.2f}\n'
+                    text = f'{value}\n'
                     self.send_chunk(text.encode())
             except (BrokenPipeError, ConnectionResetError):
                 peak_queue_inventory.return_item(q)
@@ -355,7 +358,8 @@ def server():
             elif data is None:
                 text = 'OK'
             else:
-                text = f'{data}\n'
+                text = str(data).rstrip()
+            text += '\n'
             buf = text.encode()
             self.send_response(code)
             self.send_header('Content-Type', 'text/plain')
@@ -410,9 +414,7 @@ def server():
         def do_GET(self):
             data = None
             path = self.path.split('/')[1:]
-            if self.path == '/quit':
-               data = tobool(state.quit)
-            elif self.path == '/rate':
+            if self.path == '/rate':
                data = get_sample_rate(state.radio)
             elif self.path == '/frequency':
                data = get_frequency(state.radio)
@@ -422,17 +424,23 @@ def server():
                data = tobool(get_gain_mode(state.radio))
             elif self.path == '/pause':
                data = tobool(state.pause)
-            elif self.path == '/rbw':
-               data = state.rbw
-            elif self.path == '/integration':
-               data = state.integration
             elif path[0] == 'setting' and len(path) == 2:
                data = get_radio_setting(state.radio, path[1])
+            ###
             elif self.path == '/setting':
                data = ''
                for d in state.radio.getSettingInfo():
                    value = state.radio.readSetting(d.key)
                    data += '{}: {}\n'.format(d.key, value)
+            elif self.path == '/bins':
+               data = state.bins
+            elif self.path == '/rbw':
+               data = state.rbw
+            elif self.path == '/integration':
+               data = state.integration
+            elif self.path == '/average':
+               data = state.average
+            ###
             elif self.path == '/power':
                return self.power_streaming()
             elif self.path == '/peak':
@@ -465,8 +473,9 @@ def server():
 def meter_power():
     stream = stream_queue_inventory.checkout_item()
     resolution = np.finfo(np.float16).resolution
+    scale =  ".:-=+*#%@"      
 
-    fft_n = state.rate / state.rbw
+    fft_n = state.rate / state.rbw if state.rbw else state.bins
     fft_n = int(2**np.ceil(np.log(fft_n) / np.log(2)))
     fft_time = fft_n / state.rate # in seconds
     fft_freq = state.frequency + np.fft.fftshift(np.fft.fftfreq(fft_n, d=1/state.rate))
@@ -476,13 +485,16 @@ def meter_power():
     window = np.hanning(fft_n)
     data = np.zeros(2 * fft_n, dtype=np.float32)
 
-    average_count = int(np.ceil(state.integration / fft_time))
-    total_samples = average_count * fft_n
-    power = np.zeros((average_count, fft_n), dtype=np.float32)
+    average = int(np.ceil(state.integration / fft_time))
+    total_samples = average * fft_n
+    power = np.zeros((average, fft_n), dtype=np.float32)
 
-    print('fft N =', fft_n)
-    print('average =', average_count)
-    print('rbw =', state.rate / fft_n)
+    state.bin = fft_n
+    state.rbw = state.rate / fft_n
+    state.average = average
+    print(f'fft N = {state.bin}')
+    print(f'average = {state.average}')
+    print(f'rbw = f{state.rbw:.2f}')
 
     row = 0
     col = 0
@@ -502,10 +514,13 @@ def meter_power():
             power[row,:] = np.fft.fftshift(ps)
             row += 1
             col = 0
-            if row == average_count:
+            if row == average:
                row = 0 
                ps = np.average(power, axis=0)
                ps = 20 * np.log10((ps + resolution) / resolution)
+
+               if state.waterfall:
+                   print(''.join([ scale[i] for i in (len(scale) * ps / (max(ps) + resolution)).astype(np.int32) ]), f'{state.dbfs}')
 
                now = datetime.datetime.now(datetime.UTC)
                ds = now.strftime('%Y-%m-%d')
@@ -520,15 +535,19 @@ def meter_power():
 # peak meter
 #########################
 
+def meter_set_peak(x):
+    state.dbfs = np.round(20 * np.log10(x + state.resolution), 2)
+
+
 def meter_peak_tail():
     q = peak_queue_inventory.checkout_item()
     while True:
-        value = q.get()
-        println(f'{value:.2f} dBFS')
+        println(q.get())
 
     
 def meter_peak():
-    resolution = np.finfo(np.float32).resolution
+    state.resolution = np.finfo(np.float32).resolution
+    meter_set_peak(0)
     stream = stream_queue_inventory.checkout_item()
     peak = 0
     count = 0
@@ -537,9 +556,9 @@ def meter_peak():
         peak = max(peak, abs(d).max())
         count += d.size
         if count > 2 * state.refresh * state.rate:
-            dbfs = 20 * np.log10(peak + resolution)
+            meter_set_peak(peak)
             for q in peak_queue_inventory.current():
-                q.put(dbfs)
+                q.put(state.dbfs)
             peak = 0
             count = 0
 
@@ -657,7 +676,7 @@ def capture(radio):
     # start peak meter thread
     t = Thread(target=meter_peak, daemon=True)
     t.start()
-    if not args.quiet:
+    if args.meter and not args.waterfall:
         t = Thread(target=meter_peak_tail, daemon=True)
         t.start()
 

@@ -1,4 +1,20 @@
+#!/usr/bin/python3
 
+import os, subprocess 
+
+def run(command, language=''):
+    proc = subprocess.Popen("PYTHONPATH=. python3 soapyfile/" + command, shell=True, stdout=subprocess.PIPE)
+    buf = proc.stdout.read().decode()
+    proc.wait()
+    text = f"""
+```{language}
+$ {command}
+{buf}\
+```
+"""
+    return text.replace('soapyfile.py', 'soapyfile')
+
+print(f"""
 
 # rfsoapyfile
 
@@ -39,55 +55,7 @@ Or you can use "pip install git+https://github.com/roseengineering/rfsoapyfile".
 
 ## Usage
 
-
-```
-$ soapyfile --help
-usage: soapyfile [-h] [-l] [-d DEVICE] [-f FREQUENCY] [-r RATE] [-g GAIN]
-                    [-a] [--iq-swap] [--biastee] [--digital-agc]
-                    [--offset-tune] [--direct-samp DIRECT_SAMP] [--pcm16]
-                    [--rf64] [--notimestamp] [--pause] [--output OUTPUT]
-                    [--packet-size PACKET_SIZE] [--buffer-size BUFFER_SIZE]
-                    [--bins BINS] [--rbw RBW] [--integration INTEGRATION]
-                    [--hostname HOSTNAME] [--port PORT] [--refresh REFRESH]
-                    [--meter] [--waterfall]
-
-options:
-  -h, --help            show this help message and exit
-  -l, --list            list available device names (default: False)
-  -d DEVICE, --device DEVICE
-                        device string, eg driver=rtlsdr (default: None)
-  -f FREQUENCY, --frequency FREQUENCY
-                        center frequency (Hz) (default: None)
-  -r RATE, --rate RATE  sampling rate (Hz) (default: None)
-  -g GAIN, --gain GAIN  front end gain (dB) (default: None)
-  -a, --agc             enable AGC (default: False)
-  --iq-swap             swap IQ signals (default: False)
-  --biastee             enable bias tee (default: False)
-  --digital-agc         enable digital AGC (default: False)
-  --offset-tune         enable offset tune (default: False)
-  --direct-samp DIRECT_SAMP
-                        select I or Q channel: 1 or 2 (default: None)
-  --pcm16               write 16-bit PCM samples (default: False)
-  --rf64                write RF64 file (default: False)
-  --notimestamp         do not append timestamp to output file name (default:
-                        False)
-  --pause               pause recording (default: False)
-  --output OUTPUT       output file name (default: output)
-  --packet-size PACKET_SIZE
-                        packet size in bytes (default: 1024)
-  --buffer-size BUFFER_SIZE
-                        buffer size in MB (default: 256)
-  --bins BINS           size of the fft to use, overrides rbw (default: 64)
-  --rbw RBW             power resolution bandwidth (Hz) (default: None)
-  --integration INTEGRATION
-                        power integration time (default: 1)
-  --hostname HOSTNAME   REST server hostname (default: 0.0.0.0)
-  --port PORT           REST server port number (default: 8080)
-  --refresh REFRESH     peak meter refresh (sec) (default: 1)
-  --meter               show streaming peak values (default: False)
-  --waterfall           show streaming ascii waterfall (default: False)
-```
-
+{ run("soapyfile.py --help") }
 
 ## REST API
 
@@ -199,5 +167,7 @@ Version 2 of the Zero has four cores, however I do not have one to test against.
 The script uses the threading library to provide multithreading.  Despite the GIL lock
 using this library was much faster than using the multiprocessing library performance-wise.
 The need to copy streaming data across process spaces was probably too much of a hit.
+
+""")
 
 
