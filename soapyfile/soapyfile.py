@@ -536,7 +536,7 @@ def meter_power():
 #########################
 
 def meter_set_peak(x):
-    state.dbfs = np.round(20 * np.log10(x + state.resolution), 2)
+    state.dbfs = np.round(20 * np.log10(x + state.resolution), 1)
 
 
 def meter_peak_tail():
