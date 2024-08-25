@@ -45,11 +45,11 @@ $ soapyfile --help
 usage: soapyfile [-h] [-l] [-d DEVICE] [-f FREQUENCY] [-r RATE] [-g GAIN]
                     [-a] [--iq-swap] [--biastee] [--digital-agc]
                     [--offset-tune] [--direct-samp DIRECT_SAMP] [--pcm16]
-                    [--rf64] [--notimestamp] [--pause] [--output OUTPUT]
-                    [--packet-size PACKET_SIZE] [--buffer-size BUFFER_SIZE]
-                    [--bins BINS] [--rbw RBW] [--integration INTEGRATION]
-                    [--hostname HOSTNAME] [--port PORT] [--refresh REFRESH]
-                    [--meter] [--waterfall]
+                    [--cf32] [--rf64] [--notimestamp] [--pause]
+                    [--output OUTPUT] [--packet-size PACKET_SIZE]
+                    [--buffer-size BUFFER_SIZE] [--bins BINS] [--rbw RBW]
+                    [--integration INTEGRATION] [--hostname HOSTNAME]
+                    [--port PORT] [--refresh REFRESH] [--meter] [--waterfall]
 
 options:
   -h, --help            show this help message and exit
@@ -67,8 +67,10 @@ options:
   --offset-tune         enable offset tune (default: False)
   --direct-samp DIRECT_SAMP
                         select I or Q channel: 1 or 2 (default: None)
-  --pcm16               write 16-bit PCM samples (default: False)
-  --rf64                write RF64 file (default: False)
+  --pcm16               write 16-bit PCM samples for WAV (default: False)
+  --cf32                write as .c32 raw file rather than WAV (default:
+                        False)
+  --rf64                write RF64 file for WAV (default: False)
   --notimestamp         do not append timestamp to output file name (default:
                         False)
   --pause               pause recording (default: False)
@@ -98,11 +100,11 @@ a new output file.   If the option --notimestamp is enabled, this means any prev
 output file of the same name will be overwritten.
 Also, the SDR stream is always being captured even when the recording is paused.
 
-The IQ data is streamed out of URL paths /cf32 and /s16.
-This output is always in WAV(32) format.  Run soapyfile with the --pause option if
+The IQ data is streamed out of URL paths /pcm, /float, and /cf32.
+The /pcm endpoint streams 16 bit integer WAV.  The /float endpoint streams 32-bit
+float WAV.  While the /cf32 endpoint streams in raw cf32 format.  Run soapyfile with the --pause option if
 you only want to stream over HTTP.  (No SDR program that I know of currently supports HTTP streams,
-however it might be useful for remote operation or sharing a stream in real time.  Beware, wifi might raise
-the noise floor, requiring the gain be set to a lower value.)
+however it might be useful for remote operation or sharing a stream in real time.)
 
 Peak sample data (dBFS) and frequency power data (rtl_power output format) is streamed out of URL paths /peak and /power as text.
 
@@ -123,16 +125,17 @@ GET /pause             return whether the file recording is paused (bool)
 GET /setting           return a list of the available SDR soapy settings and their values
 GET /setting/<name>    return the value of the named soapy SDR setting
 
-GET /s16               return a 16-bit integer PCM WAV HTTP audio stream
-GET /f32               return a 32-bit IEEE floating point PCM WAV HTTP audio stream
-GET /peak              return latest ADC peak values (dBFS) as a stream
-GET /power             return power values (dB) as a stream in rtl_power output format
+GET /pcm               return a 16-bit integer PCM WAV HTTP audio stream
+GET /float             return a 32-bit IEEE floating point WAV HTTP audio stream
+GET /cf32              return a 32-bit IEEE floating point raw "cf32" HTTP audio stream
+GET /peak              return latest ADC peak values (dBFS) as a HTTP stream
+GET /power             return power values (dB) as a HTTP stream in rtl_power output format
 ```
 
 Here are some sample curl commands:
 
 ```
-curl localhost:8080/f32 --output out.wav
+curl localhost:8080/float --output out.wav
 curl -d yes localhost:8080/agc
 curl -d y localhost:8080/quit
 curl -d n localhost:8080/pause
@@ -165,7 +168,7 @@ biastee: false
 ```
 
 ```
-$ curl -i localhost:8080/f32 
+$ curl -i localhost:8080/float
 HTTP/1.1 200 OK
 Server: BaseHTTP/0.6 Python/3.7.3
 Date: Sun, 31 Oct 2021 15:11:10 GMT

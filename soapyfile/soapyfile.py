@@ -31,8 +31,9 @@ def parse_args():
     parser.add_argument('--direct-samp', type=int, help='select I or Q channel: 1 or 2')
 
     # options
-    parser.add_argument('--pcm16', action='store_true', help='write 16-bit PCM samples')
-    parser.add_argument('--rf64', action='store_true', help='write RF64 file')
+    parser.add_argument('--pcm16', action='store_true', help='write 16-bit PCM samples for WAV')
+    parser.add_argument('--cf32', action='store_true', help='write as .c32 raw file rather than WAV')
+    parser.add_argument('--rf64', action='store_true', help='write RF64 file for WAV')
     parser.add_argument('--notimestamp', action='store_true', help='do not append timestamp to output file name')
     parser.add_argument('--pause', action='store_true', help='pause recording')
     parser.add_argument('--output', default='output', help='output file name')
@@ -257,7 +258,7 @@ class State:
     def initialize(
             self, refresh, pause, rate, 
             frequency, radio, notimestamp, output,
-            hostname, port, rf64, pcm16, rbw,
+            hostname, port, rf64, pcm16, cf32, rbw,
             bins, integration, waterfall, **kw):
         self.refresh = refresh
         self.pause = pause
@@ -270,6 +271,7 @@ class State:
         self.sample_bytes = 2 if pcm16 else 4
         self.port = port
         self.rf64 = rf64
+        self.cf32 = cf32
         state.rbw = rbw
         state.bins = bins
         state.integration = integration
@@ -299,7 +301,6 @@ def server():
             self.wfile.write(b'\r\n')
 
         def power_streaming(self):
-            println(f'streaming power values')
             q = power_queue_inventory.checkout_item()
             try:
                 self.send_response(200)
@@ -311,10 +312,8 @@ def server():
                     self.send_chunk(text.encode())
             except (BrokenPipeError, ConnectionResetError):
                 power_queue_inventory.return_item(q)
-            println(f'power sample stream closed')
 
         def peak_streaming(self):
-            println(f'streaming peak sample values')
             q = peak_queue_inventory.checkout_item()
             try:
                 self.send_response(200)
@@ -327,21 +326,24 @@ def server():
                     self.send_chunk(text.encode())
             except (BrokenPipeError, ConnectionResetError):
                 peak_queue_inventory.return_item(q)
-            println(f'peak sample value stream closed')
 
-        def audio_streaming(self, sample_bytes):
-            println(f'streaming {sample_bytes} byte samples')
+        def audio_streaming(self, sample_bytes=None):
             q = stream_queue_inventory.checkout_item()
+            filename = f'{state.frequency:.0f}_{state.rate:.0f}_{timestamp()}'
+            filename += '.wav' if sample_bytes else '.cf32'
+            content_type = 'audio/wav' if sample_bytes else 'audio/cf32'
             try:
                 self.send_response(200)
                 self.send_header('Transfer-Encoding', 'chunked')
-                self.send_header('Content-Type', 'audio/wav')
+                self.send_header('Content-Disposition', f'inline; filename="{filename}"')
+                self.send_header('Content-Type', content_type)
                 self.end_headers()
-                buf = wav_header(
-                    sample_bytes=sample_bytes, 
-                    frequency=state.frequency, 
-                    rate=state.rate)
-                self.send_chunk(buf)
+                if sample_bytes:
+                    buf = wav_header(
+                        sample_bytes=sample_bytes, 
+                        frequency=state.frequency, 
+                        rate=state.rate)
+                    self.send_chunk(buf)
                 while True:
                     d = q.get()
                     if sample_bytes == 2:
@@ -349,7 +351,6 @@ def server():
                     self.send_chunk(d.tobytes())
             except (BrokenPipeError, ConnectionResetError):
                 stream_queue_inventory.return_item(q)
-            println(f'audio stream closed')
 
         def text_response(self, data=None, code=200, success=True):
             if not success:
@@ -445,10 +446,12 @@ def server():
                return self.power_streaming()
             elif self.path == '/peak':
                return self.peak_streaming()
-            elif self.path == '/s16':
+            elif self.path == '/pcm':
                return self.audio_streaming(sample_bytes=2)
-            elif self.path == '/cf32':
+            elif self.path == '/float':
                return self.audio_streaming(sample_bytes=4)
+            elif self.path == '/cf32':
+               return self.audio_streaming()
             else:
                return self.text_response('Not Found', code=404)
             self.text_response(data)
@@ -492,6 +495,7 @@ def meter_power():
     state.bins = fft_n
     state.rbw = state.rate / fft_n
     state.average = average
+
     print(f'fft size = {state.bins}')
     print(f'average = {state.average}')
     print(f'rbw = {state.rbw:.2f} Hz')
@@ -571,21 +575,23 @@ def writer_record(q):
     # get filename
     basename, ext = os.path.splitext(state.output)
     if not state.notimestamp:
-        ts = timestamp()
-        basename = f'{basename}_{ts}'
-    filename = '{}{}'.format(basename, ext or '.wav')
+        basename = f'{basename}_{timestamp()}'
+    default_ext = '.cf32' if state.cf32 else '.wav'
+    filename = '{}{}'.format(basename, ext or default_ext)
 
     # open wav file
-    println('Writing stream to WAV file: "{}".'.format(filename))
-    wav_file = open(filename, "wb+")
-    param = {
-        'sample_bytes': state.sample_bytes, 
-        'frequency': state.frequency, 
-        'rate': state.rate, 
-        'rf64': state.rf64
-    }
-    wav_buf = wav_header(**param)
-    wav_file.write(wav_buf)
+    println('Writing IQ stream to file: "{}".'.format(filename))
+    fd = open(filename, "wb+")
+
+    if not state.cf32:
+        param = {
+            'sample_bytes': state.sample_bytes, 
+            'frequency': state.frequency, 
+            'rate': state.rate, 
+            'rf64': state.rf64
+        }
+        wav_buf = wav_header(**param)
+        fd.write(wav_buf)
 
     # begin recording
     try:
@@ -594,12 +600,13 @@ def writer_record(q):
             d = q.get()
             if state.sample_bytes == 2:
                 d = np.ceil(0x8000 * d).astype(np.int16)
-            wav_file.write(d)
+            fd.write(d)
             data_size += d.nbytes
-        wav_file.seek(0)
-        wav_file.write(wav_header(data_size=data_size, **param))
-        wav_file.close()
-        println('WAV file closed.')
+        if not state.cf32:
+            fd.seek(0)
+            fd.write(wav_header(data_size=data_size, **param))
+        fd.close()
+        println('IQ file closed.')
     except OSError as e:
         state.quit = True
         println('Fatal error: {}'.format(e))
