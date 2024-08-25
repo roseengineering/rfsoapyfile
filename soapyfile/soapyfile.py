@@ -525,7 +525,7 @@ def meter_power():
                now = datetime.datetime.now(datetime.UTC)
                ds = now.strftime('%Y-%m-%d')
                ts = now.strftime('%H:%M:%S')
-               dbm = ','.join(f'{d:.2f}' for d in ps)
+               dbm = ','.join(f'{d:.1f}' for d in ps)
                text = f'{ds},{ts},{fft_start:.0f},{fft_stop:.0f},{fft_step:.0f},{total_samples},{dbm}\n'
                for q in power_queue_inventory.current():
                    q.put(text)
