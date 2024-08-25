@@ -42,6 +42,7 @@ def parse_args():
     parser.add_argument('--bins', default=64, type=int, help='size of the fft to use, overrides rbw')
     parser.add_argument('--rbw', type=float, help='power resolution bandwidth (Hz)')
     parser.add_argument('--integration', default=1, type=float, help='power integration time')
+    parser.add_argument('--average', type=int, help='specific number of ffts to average')
 
     # rest server and peak meter
     parser.add_argument('--hostname', default='0.0.0.0', help='REST server hostname')
@@ -259,7 +260,8 @@ class State:
             self, refresh, pause, rate, 
             frequency, radio, notimestamp, output,
             hostname, port, rf64, pcm16, cf32, rbw,
-            bins, integration, waterfall, **kw):
+            bins, integration, average, waterfall,
+            **kw):
         self.refresh = refresh
         self.pause = pause
         self.rate = rate
@@ -275,6 +277,7 @@ class State:
         state.rbw = rbw
         state.bins = bins
         state.integration = integration
+        state.average = average
         state.waterfall = waterfall
         self.done = False
         self.quit = False
@@ -481,14 +484,16 @@ def meter_power():
     fft_n = state.rate / state.rbw if state.rbw else state.bins
     fft_n = int(2**np.ceil(np.log(fft_n) / np.log(2)))
     fft_time = fft_n / state.rate # in seconds
-    fft_freq = state.frequency + np.fft.fftshift(np.fft.fftfreq(fft_n, d=1/state.rate))
+    fft_freq = (state.frequency + 
+                np.fft.fftshift(np.fft.fftfreq(fft_n, d=1/state.rate)))
     fft_start = fft_freq[0]
     fft_stop = fft_freq[-1]
     fft_step = fft_freq[1] - fft_freq[0]
     window = np.hanning(fft_n)
     data = np.zeros(2 * fft_n, dtype=np.float32)
 
-    average = int(np.ceil(state.integration / fft_time))
+    average = (state.average if state.average else 
+               int(np.ceil(state.integration / fft_time)))
     total_samples = average * fft_n
     power = np.zeros((average, fft_n), dtype=np.float32)
 
@@ -526,12 +531,14 @@ def meter_power():
                if state.waterfall:
                    print(''.join([ scale[i] for i in (len(scale) * ps / (max(ps) + resolution)).astype(np.int32) ]), f'{state.dbfs}')
 
-               now = datetime.datetime.now(datetime.UTC)
-               ds = now.strftime('%Y-%m-%d')
-               ts = now.strftime('%H:%M:%S')
-               dbm = ','.join(f'{d:.1f}' for d in ps)
-               text = f'{ds},{ts},{fft_start:.0f},{fft_stop:.0f},{fft_step:.0f},{total_samples},{dbm}\n'
+               text = None
                for q in power_queue_inventory.current():
+                   if text is None:
+                       now = datetime.datetime.now(datetime.UTC)
+                       ds = now.strftime('%Y-%m-%d')
+                       ts = now.strftime('%H:%M:%S')
+                       dbm = ','.join(f'{d:.1f}' for d in ps)
+                       text = f'{ds},{ts},{fft_start:.0f},{fft_stop:.0f},{fft_step:.0f},{total_samples},{dbm}\n'
                    q.put(text)
 
 

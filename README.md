@@ -48,8 +48,9 @@ usage: soapyfile [-h] [-l] [-d DEVICE] [-f FREQUENCY] [-r RATE] [-g GAIN]
                     [--cf32] [--rf64] [--notimestamp] [--pause]
                     [--output OUTPUT] [--packet-size PACKET_SIZE]
                     [--buffer-size BUFFER_SIZE] [--bins BINS] [--rbw RBW]
-                    [--integration INTEGRATION] [--hostname HOSTNAME]
-                    [--port PORT] [--refresh REFRESH] [--meter] [--waterfall]
+                    [--integration INTEGRATION] [--average AVERAGE]
+                    [--hostname HOSTNAME] [--port PORT] [--refresh REFRESH]
+                    [--meter] [--waterfall]
 
 options:
   -h, --help            show this help message and exit
@@ -83,6 +84,7 @@ options:
   --rbw RBW             power resolution bandwidth (Hz) (default: None)
   --integration INTEGRATION
                         power integration time (default: 1)
+  --average AVERAGE     specific number of ffts to average (default: None)
   --hostname HOSTNAME   REST server hostname (default: 0.0.0.0)
   --port PORT           REST server port number (default: 8080)
   --refresh REFRESH     peak meter refresh (sec) (default: 1)
