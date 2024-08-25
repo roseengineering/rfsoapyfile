@@ -47,14 +47,15 @@ usage: soapyfile [-h] [-l] [-d DEVICE] [-f FREQUENCY] [-r RATE] [-g GAIN]
                     [--offset-tune] [--direct-samp DIRECT_SAMP] [--pcm16]
                     [--rf64] [--notimestamp] [--pause] [--output OUTPUT]
                     [--packet-size PACKET_SIZE] [--buffer-size BUFFER_SIZE]
+                    [--rbw RBW] [--integration INTEGRATION]
                     [--hostname HOSTNAME] [--port PORT] [--refresh REFRESH]
                     [--quiet]
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -l, --list            list available device names (default: False)
   -d DEVICE, --device DEVICE
-                        device name (default: None)
+                        device string, eg driver=rtlsdr (default: None)
   -f FREQUENCY, --frequency FREQUENCY
                         center frequency (Hz) (default: None)
   -r RATE, --rate RATE  sampling rate (Hz) (default: None)
@@ -76,9 +77,12 @@ optional arguments:
                         packet size in bytes (default: 1024)
   --buffer-size BUFFER_SIZE
                         buffer size in MB (default: 256)
+  --rbw RBW             power resolution bandwidth (Hz) (default: 10000)
+  --integration INTEGRATION
+                        power integration time (default: 1)
   --hostname HOSTNAME   REST server hostname (default: 0.0.0.0)
   --port PORT           REST server port number (default: 8080)
-  --refresh REFRESH     peak meter refresh (sec) (default: 2)
+  --refresh REFRESH     peak meter refresh (sec) (default: 1)
   --quiet               do not print peak values (default: False)
 ```
 
@@ -87,7 +91,7 @@ optional arguments:
 
 The REST API is available off port 8080.  Use POST or PUT to change
 a program or radio setting.  Use GET to view it.  If a boolean is needed, the following
-strings are accepted: y, n, yes, no, true, false, 1 and 0.  Pausing the recording closes the WAV output file, while unpausing the recording creates
+strings are accepted: y, n, yes, no, true, and false.  Pausing the recording closes the WAV output file, while unpausing the recording creates
 a new output file.   If the option --notimestamp is enabled, this means any previously existing
 output file of the same name will be overwritten.
 Also, the SDR stream is always being captured even when the recording is paused.
@@ -98,6 +102,7 @@ you only want to stream over HTTP.  (No SDR program that I know of currently sup
 however it might be useful for remote operation or sharing a stream in real time.  Beware, wifi might raise
 the noise floor, requiring the gain be set to a lower value.)
 
+Peak sample data (dBFS) and frequency power data (rtl_power output format) is streamed out of URL paths /peak and /power as text.
 
 ```
 PUT /quit              <bool>      stop capture and terminate program, yes or no
@@ -112,19 +117,20 @@ GET /rate              return sampling rate (Hz)
 GET /frequency         return center frequency (Hz)
 GET /gain              return gain (Hz)
 GET /agc               return AGC setting (bool)
-GET /peak              return the latest ADC peak value (dBFS)
 GET /pause             return whether the file recording is paused (bool)
 GET /setting           return a list of the available SDR soapy settings and their values
 GET /setting/<name>    return the value of the named soapy SDR setting
 
 GET /s16               return a 16-bit integer PCM WAV HTTP audio stream
-GET /cf32              return a 32-bit IEEE floating point PCM WAV HTTP audio stream
+GET /f32               return a 32-bit IEEE floating point PCM WAV HTTP audio stream
+GET /peak              return latest ADC peak values (dBFS) as a stream
+GET /power             return power values (dB) as a stream in rtl_power output format
 ```
 
 Here are some sample curl commands:
 
 ```
-curl localhost:8080/cf32 --output out.wav
+curl localhost:8080/f32 --output out.wav
 curl -d yes localhost:8080/agc
 curl -d y localhost:8080/quit
 curl -d n localhost:8080/pause
@@ -157,7 +163,7 @@ biastee: false
 ```
 
 ```
-$ curl -i localhost:8080/cf32 
+$ curl -i localhost:8080/f32 
 HTTP/1.1 200 OK
 Server: BaseHTTP/0.6 Python/3.7.3
 Date: Sun, 31 Oct 2021 15:11:10 GMT

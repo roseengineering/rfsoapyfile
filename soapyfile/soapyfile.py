@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import os
 import sys
@@ -38,11 +38,13 @@ def parse_args():
     parser.add_argument('--output', default='output', help='output file name')
     parser.add_argument('--packet-size', default=1024, type=int, help='packet size in bytes')
     parser.add_argument('--buffer-size', default=256, type=int, help='buffer size in MB')
+    parser.add_argument('--rbw', default=10000, type=float, help='power resolution bandwidth (Hz)')
+    parser.add_argument('--integration', default=1, type=int, help='power integration time')
 
     # rest server and peak meter
     parser.add_argument('--hostname', default='0.0.0.0', help='REST server hostname')
     parser.add_argument('--port', default=8080, type=int, help='REST server port number')
-    parser.add_argument('--refresh', default=2, type=float, help='peak meter refresh (sec)')
+    parser.add_argument('--refresh', default=1, type=float, help='peak meter refresh (sec)')
     parser.add_argument('--quiet', action='store_true', help='do not print peak values')
     return parser.parse_args()
 
@@ -76,7 +78,8 @@ def println(buf):
 
 
 def timestamp():
-    return datetime.datetime.now(datetime.UTC).strftime('%y%m%d%H%M%S')
+    now = datetime.datetime.now(datetime.UTC)
+    return now.strftime('%y%m%d%H%M%S')
 
 
 def log_handler(log_level, message):
@@ -90,7 +93,8 @@ def log_handler(log_level, message):
         7: "DEBUG",
         8: "TRACE",
         9: "SSI"}
-    ts = datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S')
+    now = datetime.datetime.now(datetime.UTC)
+    ts = now.strftime('%H:%M:%S')
     println("[{}] {}: {}".format(ts, log_text[log_level], message))
 
 
@@ -222,33 +226,17 @@ def wav_header(sample_bytes, frequency, rate, rf64=False, data_size=None, **kw):
 #########################
 
 
-
-class PeakMeter:
-    def __init__(self):
-        self.resolution = np.finfo(np.float32).resolution
-        self.peak_db = -np.inf
-
-    def initialize(self, state):
-        self.state = state
-
-    def refresh_count(self):
-        return 2 * self.state.refresh * self.state.rate  # two channels
-
-    def set_peak(self, peak):
-        self.peak_db = 20 * np.log10(peak + self.resolution)
-        if not self.state.quiet:
-            println('{:.2f} dBFS'.format(self.peak_db))
-    
-
 class QueueInventory:
     def __init__(self):
         self.lock = Lock()
         self.inventory = []
+        self.maxsize = 0
 
     def initialize(self, maxsize):
         self.maxsize = maxsize 
 
     def checkout_item(self):
+        # if maxsize is 0 or less then queue size is infinite
         q = Queue(maxsize=self.maxsize)
         with self.lock:
             self.inventory.append(q)
@@ -267,7 +255,8 @@ class State:
     def initialize(
             self, refresh, quiet, pause, rate, 
             frequency, radio, notimestamp, output,
-            hostname, port, rf64, sample_bytes, **kw):
+            hostname, port, rf64, pcm16, rbw,
+            integration, **kw):
         self.refresh = refresh
         self.quiet = quiet
         self.pause = pause
@@ -277,15 +266,18 @@ class State:
         self.notimestamp = notimestamp
         self.output = output
         self.hostname = hostname
-        self.sample_bytes = sample_bytes
+        self.sample_bytes = 2 if pcm16 else 4
         self.port = port
         self.rf64 = rf64
+        state.rbw = rbw
+        state.integration = integration
         self.done = False
         self.quit = False
 
         
-queue_inventory = QueueInventory()
-peak_meter = PeakMeter()
+peak_queue_inventory = QueueInventory()
+power_queue_inventory = QueueInventory()
+stream_queue_inventory = QueueInventory()
 state = State()
 
 
@@ -303,8 +295,40 @@ def server():
             self.wfile.write(buf)
             self.wfile.write(b'\r\n')
 
-        def http_streaming(self, sample_bytes):
-            q = queue_inventory.checkout_item()
+        def power_streaming(self):
+            println(f'streaming power values')
+            q = power_queue_inventory.checkout_item()
+            try:
+                self.send_response(200)
+                self.send_header('Transfer-Encoding', 'chunked')
+                self.send_header('Content-Type', 'text/plain')
+                self.end_headers()
+                while True:
+                    text = q.get()
+                    self.send_chunk(text.encode())
+            except (BrokenPipeError, ConnectionResetError):
+                power_queue_inventory.return_item(q)
+            println(f'power sample stream closed')
+
+        def peak_streaming(self):
+            println(f'streaming peak sample values')
+            q = peak_queue_inventory.checkout_item()
+            try:
+                self.send_response(200)
+                self.send_header('Transfer-Encoding', 'chunked')
+                self.send_header('Content-Type', 'text/plain')
+                self.end_headers()
+                while True:
+                    value = q.get()
+                    text = f'{value:.2f}\n'
+                    self.send_chunk(text.encode())
+            except (BrokenPipeError, ConnectionResetError):
+                peak_queue_inventory.return_item(q)
+            println(f'peak sample value stream closed')
+
+        def audio_streaming(self, sample_bytes):
+            println(f'streaming {sample_bytes} byte samples')
+            q = stream_queue_inventory.checkout_item()
             try:
                 self.send_response(200)
                 self.send_header('Transfer-Encoding', 'chunked')
@@ -321,20 +345,23 @@ def server():
                         d = np.ceil(0x8000 * d).astype(np.int16)
                     self.send_chunk(d.tobytes())
             except (BrokenPipeError, ConnectionResetError):
-                queue_inventory.return_item(q)
+                stream_queue_inventory.return_item(q)
+            println(f'audio stream closed')
 
         def text_response(self, data=None, code=200, success=True):
             if not success:
-               data = 'Bad Request'
-               code = 400 
+                text = 'Bad Request'
+                code = 400 
             elif data is None:
-               data = 'OK'
-            data = (str(data).rstrip() + '\n').encode()
+                text = 'OK'
+            else:
+                text = f'{data}\n'
+            buf = text.encode()
             self.send_response(code)
             self.send_header('Content-Type', 'text/plain')
-            self.send_header('Content-Length', len(data))
+            self.send_header('Content-Length', len(buf))
             self.end_headers()
-            self.wfile.write(data)
+            self.wfile.write(buf)
 
         def do_HEAD(self):
             self.text_response()
@@ -350,8 +377,8 @@ def server():
                     state.quit = abool(text)
                     return
             elif self.path == '/rate':
-                # recording must be paused to change the sampling rate
                 if afloat(text) is not None and state.pause:
+                    # recording must be paused to change the sampling rate
                     set_sample_rate(state.radio, afloat(text)) 
                     success = True
             elif self.path == '/frequency':
@@ -393,10 +420,12 @@ def server():
                data = get_gain(state.radio)
             elif self.path == '/agc':
                data = tobool(get_gain_mode(state.radio))
-            elif self.path == '/peak':
-               data = '{:.2f}'.format(peak_meter.peak_db)
             elif self.path == '/pause':
                data = tobool(state.pause)
+            elif self.path == '/rbw':
+               data = state.rbw
+            elif self.path == '/integration':
+               data = state.integration
             elif path[0] == 'setting' and len(path) == 2:
                data = get_radio_setting(state.radio, path[1])
             elif self.path == '/setting':
@@ -404,10 +433,14 @@ def server():
                for d in state.radio.getSettingInfo():
                    value = state.radio.readSetting(d.key)
                    data += '{}: {}\n'.format(d.key, value)
+            elif self.path == '/power':
+               return self.power_streaming()
+            elif self.path == '/peak':
+               return self.peak_streaming()
             elif self.path == '/s16':
-               return self.http_streaming(sample_bytes=2)
+               return self.audio_streaming(sample_bytes=2)
             elif self.path == '/cf32':
-               return self.http_streaming(sample_bytes=4)
+               return self.audio_streaming(sample_bytes=4)
             else:
                return self.text_response('Not Found', code=404)
             self.text_response(data)
@@ -417,44 +450,108 @@ def server():
 
     address = (state.hostname, state.port)
     println('Starting server on host "{}" port {}'.format(*address))
-    httpd = ThreadingHTTPServer(address, HTTPRequestHandler)
-    httpd.serve_forever()
+    try:
+        httpd = ThreadingHTTPServer(address, HTTPRequestHandler)
+        httpd.serve_forever()
+    except OSError as e:
+        println(f'\nREST server error "{e}", quitting.')
+        state.done = True
+
+
+#########################
+# power meter
+#########################
+
+def meter_power():
+    stream = stream_queue_inventory.checkout_item()
+    resolution = np.finfo(np.float16).resolution
+
+    fft_n = state.rate / state.rbw
+    fft_n = int(2**np.ceil(np.log(fft_n) / np.log(2)))
+    fft_n = int(np.ceil(state.rate / state.rbw))
+    fft_time = fft_n / state.rate # in seconds
+    fft_freq = state.frequency + np.fft.fftshift(np.fft.fftfreq(fft_n, d=1/state.rate))
+    fft_start = fft_freq[0]
+    fft_stop = fft_freq[-1]
+    fft_step = fft_freq[1] - fft_freq[0]
+    window = np.hanning(fft_n)
+    data = np.zeros(2 * fft_n, dtype=np.float32)
+
+    average_count = int(np.ceil(state.integration / fft_time))
+    total_samples = average_count * fft_n
+    power = np.zeros((average_count, fft_n), dtype=np.float32)
+    print(total_samples)
+
+    row = 0
+    col = 0
+    while True:
+        d = stream.get()
+        i = 0
+        n = len(d)
+        while i < n:
+            size = min(n - i, 2 * fft_n - col)
+            data[col:col+size] = d[i:i+size]
+            i += size
+            col += size
+            if col < 2 * fft_n:
+                break
+            ps = data[::2] + data[1::2] * 1j
+            ps = abs(np.fft.fft(ps * window)) / fft_n
+            power[row,:] = np.fft.fftshift(ps)
+            row += 1
+            col = 0
+            if row == average_count:
+               row = 0 
+               ps = np.average(power, axis=0)
+               ps = 20 * np.log10((ps + resolution) / resolution)
+
+               now = datetime.datetime.now(datetime.UTC)
+               ds = now.strftime('%Y-%m-%d')
+               ts = now.strftime('%H:%M:%S')
+               dbm = ' '.join(f'{d:.2f}' for d in ps)
+               text = f'{ds} {ts} {fft_start:.0f} {fft_stop:.0f} {fft_step:.0f} {total_samples} {dbm}\n'
+               for q in power_queue_inventory.current():
+                   q.put(text)
 
 
 #########################
 # peak meter
 #########################
 
+def meter_peak_tail():
+    q = peak_queue_inventory.checkout_item()
+    while True:
+        value = q.get()
+        println(f'{value:.2f} dBFS')
 
-
-
-###
-
-def meter():
-    q = queue_inventory.checkout_item()
+    
+def meter_peak():
     resolution = np.finfo(np.float32).resolution
+    stream = stream_queue_inventory.checkout_item()
     peak = 0
     count = 0
-    while peak_meter.refresh_count() > 0:
-        d = q.get()
+    while True:
+        d = stream.get()
         peak = max(peak, abs(d).max())
         count += d.size
-        if count > peak_meter.refresh_count():
-            peak_meter.set_peak(peak)
+        if count > 2 * state.refresh * state.rate:
+            dbfs = 20 * np.log10(peak + resolution)
+            for q in peak_queue_inventory.current():
+                q.put(dbfs)
             peak = 0
             count = 0
-    queue_inventory.return_item(q)
 
 
 #########################
 # writer
 #########################
 
-def record(q):
+def writer_record(q):
     # get filename
     basename, ext = os.path.splitext(state.output)
     if not state.notimestamp:
-        basename = '{}_{}'.format(basename, timestamp())
+        ts = timestamp()
+        basename = f'{basename}_{ts}'
     filename = '{}{}'.format(basename, ext or '.wav')
 
     # open wav file
@@ -464,7 +561,7 @@ def record(q):
         'sample_bytes': state.sample_bytes, 
         'frequency': state.frequency, 
         'rate': state.rate, 
-         'rf64': state.rf64
+        'rf64': state.rf64
     }
     wav_buf = wav_header(**param)
     wav_file.write(wav_buf)
@@ -488,14 +585,13 @@ def record(q):
 
 
 def writer():
-    q = queue_inventory.checkout_item()
+    q = stream_queue_inventory.checkout_item()
     while not state.quit:
         while not state.quit and state.pause:
             d = q.get()
         if not state.quit:
-            record(q)
+            writer_record(q)
     state.done = True
-    queue_inventory.return_item(q)
 
 
 #########################
@@ -528,7 +624,6 @@ def capture(radio):
     # get info
     args.rate = get_sample_rate(radio)
     args.frequency = get_frequency(radio)
-    sample_bytes = 2 if args.pcm16 else 4
 
     # show info
     println('Sampling Rate: {:11.6f} MHz'.format(args.rate / 1e6))
@@ -543,27 +638,26 @@ def capture(radio):
     show_radio_setting(radio, 'offset_tune')
     show_radio_setting(radio, 'direct_samp')
 
-    # data packet
+    # setup
     data = np.array([0] * 2 * args.packet_size, np.float32)
-
-    # setup 
-    maxsize = args.buffer_size * 2**20 // data.nbytes
-    queue_inventory.initialize(maxsize)
-
-    # setup state
-    kw = args.__dict__
-    state.initialize(radio=radio, sample_bytes=sample_bytes, **kw)
+    state.initialize(radio=radio, **args.__dict__)
+    maxsize = int(np.ceil(args.buffer_size * 2**20 / data.nbytes))
+    stream_queue_inventory.initialize(maxsize)
     
-    # setup peak meter
-    peak_meter.initialize(state)
-
     # start writer thread
-    t_writer = Thread(target=writer, daemon=True)
-    t_writer.start()
+    t = Thread(target=writer, daemon=True)
+    t.start()
+
+    # start power thread
+    t = Thread(target=meter_power, daemon=True)
+    t.start()
 
     # start peak meter thread
-    t = Thread(target=meter, daemon=True)
+    t = Thread(target=meter_peak, daemon=True)
     t.start()
+    if not args.quiet:
+        t = Thread(target=meter_peak_tail, daemon=True)
+        t.start()
 
     # start webserver thread
     t = Thread(target=server, daemon=True)
@@ -576,9 +670,12 @@ def capture(radio):
         try:
             radio.readStream(stream, [data], args.packet_size)
             d = data.copy()
-            for q in queue_inventory.current():
+            for q in stream_queue_inventory.current():
                 q.put(d)
-        except (KeyboardInterrupt, SystemError):
+        except SystemError as e:
+            println(f'\nSystem error "{e}", quitting.')
+            break
+        except KeyboardInterrupt:
             println('\nCapture interrupted, quitting.')
             state.quit = True
 
