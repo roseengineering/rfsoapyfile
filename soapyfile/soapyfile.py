@@ -36,8 +36,8 @@ def parse_args():
     parser.add_argument('--notimestamp', action='store_true', help='do not append timestamp to output file name')
     parser.add_argument('--pause', action='store_true', help='pause recording')
     parser.add_argument('--output', default='output', help='output file name')
-    parser.add_argument('--packet-size', default=1024, type=int, help='packet size in bytes')
-    parser.add_argument('--buffer-size', default=256, type=int, help='buffer size in MB')
+    parser.add_argument('--packet-size', default=1024, type=int, help='soapysdr packet size in bytes')
+    parser.add_argument('--buffer-size', default=256, type=int, help='stream buffer size in MB')
     parser.add_argument('--bins', default=64, type=int, help='size of the fft to use, overrides rbw')
     parser.add_argument('--rbw', type=float, help='power resolution bandwidth (Hz)')
     parser.add_argument('--integration', default=1, type=float, help='power integration time')
@@ -512,8 +512,8 @@ def meter_power():
             ps = data[::2] + data[1::2] * 1j
             ps = abs(np.fft.fft(ps * window)) / fft_n
             power[row,:] = np.fft.fftshift(ps)
-            row += 1
             col = 0
+            row += 1
             if row == average:
                row = 0 
                ps = np.average(power, axis=0)
@@ -626,6 +626,9 @@ def show_radio_setting(radio, name):
 
 
 def capture(radio):
+    state.initialize(radio=radio, **args.__dict__)
+
+    # configure radio
     set_sample_rate(radio, args.rate)
     set_frequency(radio, args.frequency)
     if args.agc:
@@ -635,7 +638,7 @@ def capture(radio):
         set_gain_mode(radio, False)
         set_gain(radio, args.gain)
 
-    # settings
+    # extra 
     if args.iq_swap: set_radio_setting(radio, 'iq_swap', 'true')
     if args.biastee: set_radio_setting(radio, 'biastee', 'true')
     if args.digital_agc: set_radio_setting(radio, 'digital_agc', 'true')
@@ -643,12 +646,12 @@ def capture(radio):
     if args.direct_samp: set_radio_setting(radio, 'direct_samp', args.direct_samp)
 
     # get info
-    args.rate = get_sample_rate(radio)
-    args.frequency = get_frequency(radio)
+    state.rate = get_sample_rate(radio)
+    state.frequency = get_frequency(radio)
 
     # show info
-    println('Sampling Rate: {:11.6f} MHz'.format(args.rate / 1e6))
-    println('Frequency:     {:11.6f} MHz'.format(args.frequency / 1e6))
+    println('Sampling Rate: {:11.6f} MHz'.format(state.rate / 1e6))
+    println('Frequency:     {:11.6f} MHz'.format(state.frequency / 1e6))
     println('AGC:           {:>11s}'.format(tobool(get_gain_mode(radio))))
     println('Gain:          {:11.4g} dB'.format(get_gain(radio)))
 
@@ -661,7 +664,6 @@ def capture(radio):
 
     # setup
     data = np.array([0] * 2 * args.packet_size, np.float32)
-    state.initialize(radio=radio, **args.__dict__)
     maxsize = int(np.ceil(args.buffer_size * 2**20 / data.nbytes))
     stream_queue_inventory.initialize(maxsize)
     

@@ -74,9 +74,9 @@ options:
   --pause               pause recording (default: False)
   --output OUTPUT       output file name (default: output)
   --packet-size PACKET_SIZE
-                        packet size in bytes (default: 1024)
+                        soapysdr packet size in bytes (default: 1024)
   --buffer-size BUFFER_SIZE
-                        buffer size in MB (default: 256)
+                        stream buffer size in MB (default: 256)
   --bins BINS           size of the fft to use, overrides rbw (default: 64)
   --rbw RBW             power resolution bandwidth (Hz) (default: None)
   --integration INTEGRATION
