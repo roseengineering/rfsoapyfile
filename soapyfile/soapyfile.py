@@ -39,8 +39,8 @@ def parse_args():
     parser.add_argument('--output', default='output', help='output file name')
     parser.add_argument('--packet-size', default=1024, type=int, help='soapysdr packet size in bytes')
     parser.add_argument('--buffer-size', default=256, type=int, help='stream buffer size in MB')
-    parser.add_argument('--bins', default=64, type=int, help='size of the fft to use, overrides rbw')
-    parser.add_argument('--rbw', type=float, help='power resolution bandwidth (Hz)')
+    parser.add_argument('--bins', default=64, type=int, help='size of the fft to use')
+    parser.add_argument('--rbw', type=float, help='power resolution bandwidth (Hz), overrides bins')
     parser.add_argument('--integration', default=1, type=float, help='power integration time')
     parser.add_argument('--average', type=int, help='specific number of ffts to average')
 
