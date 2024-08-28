@@ -479,7 +479,7 @@ def server():
 def meter_power():
     stream = stream_queue_inventory.checkout_item()
     resolution = np.finfo(np.float16).resolution
-    scale =  ".:-=+*#%@"      
+    scale = ".:-=+*#%@"
 
     fft_n = state.rate / state.rbw if state.rbw else state.bins
     fft_n = int(2**np.ceil(np.log(fft_n) / np.log(2)))
