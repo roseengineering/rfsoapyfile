@@ -39,9 +39,9 @@ def parse_args():
     parser.add_argument('--output', default='output', help='output file name')
     parser.add_argument('--packet-size', default=1024, type=int, help='soapysdr packet size in bytes')
     parser.add_argument('--buffer-size', default=256, type=int, help='stream buffer size in MB')
-    parser.add_argument('--bins', default=64, type=int, help='size of the fft to use')
-    parser.add_argument('--rbw', type=float, help='power resolution bandwidth (Hz), overrides bins')
-    parser.add_argument('--integration', default=1, type=float, help='power integration time')
+    parser.add_argument('--bins', default=64, type=int, help='size of the fft to use for power measurements')
+    parser.add_argument('--rbw', type=float, help='fft power resolution bandwidth (Hz), overrides bins')
+    parser.add_argument('--integration', default=1, type=float, help='fft power integration time for rbw option')
     parser.add_argument('--average', type=int, help='specific number of ffts to average')
 
     # rest server and peak meter
@@ -49,7 +49,7 @@ def parse_args():
     parser.add_argument('--port', default=8080, type=int, help='REST server port number')
     parser.add_argument('--refresh', default=1, type=float, help='peak meter refresh (sec)')
     parser.add_argument('--meter', action='store_true', help='show streaming peak values')
-    parser.add_argument('--waterfall', action='store_true', help='show streaming ascii waterfall')
+    parser.add_argument('--waterfall', action='store_true', help='show streaming ascii waterfall of power')
     return parser.parse_args()
 
 
