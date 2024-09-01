@@ -12,8 +12,6 @@ from threading import Thread, Lock
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 
-DEVICE_CHANNEL = 0
-
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -117,6 +115,8 @@ def log_handler(log_level, message):
 
 
 ## soapysdr setters
+
+DEVICE_CHANNEL = 0
 
 def set_gain_mode(radio, agc):
     try:
