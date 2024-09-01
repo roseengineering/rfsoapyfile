@@ -271,11 +271,10 @@ class QueueInventory:
 
 class State:
     def initialize(
-            self, refresh, pause, rate, 
-            frequency, radio, notimestamp, output,
-            hostname, port, rf64, pcm, cf32, rbw,
-            bins, integration, average, waterfall,
-            **kw):
+            self, refresh, pause, rate, frequency, radio, 
+            notimestamp, output, hostname, port, rf64, pcm,
+            cf32, rbw, bins, integration, average, waterfall,
+            meter, **kw):
         self.refresh = refresh
         self.pause = pause
         self.rate = rate
@@ -293,6 +292,7 @@ class State:
         state.integration = integration
         state.average = average
         state.waterfall = waterfall
+        state.meter = meter
         self.done = False
         self.quit = False
 
@@ -300,6 +300,7 @@ class State:
 peak_queue_inventory = QueueInventory()
 power_queue_inventory = QueueInventory()
 stream_queue_inventory = QueueInventory()
+waterfall_queue_inventory = QueueInventory()
 state = State()
 
 
@@ -317,32 +318,18 @@ def server():
             self.wfile.write(buf)
             self.wfile.write(b'\r\n')
 
-        def power_streaming(self):
-            q = power_queue_inventory.checkout_item()
+        def text_streaming(self, queue_inventory):
+            q = queue_inventory.checkout_item()
             try:
                 self.send_response(200)
                 self.send_header('Transfer-Encoding', 'chunked')
                 self.send_header('Content-Type', 'text/plain')
                 self.end_headers()
                 while True:
-                    text = q.get()
+                    text = f'{q.get()}\n'
                     self.send_chunk(text.encode())
             except (BrokenPipeError, ConnectionResetError):
-                power_queue_inventory.return_item(q)
-
-        def peak_streaming(self):
-            q = peak_queue_inventory.checkout_item()
-            try:
-                self.send_response(200)
-                self.send_header('Transfer-Encoding', 'chunked')
-                self.send_header('Content-Type', 'text/plain')
-                self.end_headers()
-                while True:
-                    value = q.get()
-                    text = f'{value}\n'
-                    self.send_chunk(text.encode())
-            except (BrokenPipeError, ConnectionResetError):
-                peak_queue_inventory.return_item(q)
+                queue_inventory.return_item(q)
 
         def audio_streaming(self, sample_bytes=None):
             q = stream_queue_inventory.checkout_item()
@@ -459,10 +446,12 @@ def server():
             elif self.path == '/average':
                data = state.average
             ###
+            elif self.path == '/waterfall':
+               return self.text_streaming(waterfall_queue_inventory)
             elif self.path == '/power':
-               return self.power_streaming()
+               return self.text_streaming(power_queue_inventory)
             elif self.path == '/peak':
-               return self.peak_streaming()
+               return self.text_streaming(peak_queue_inventory)
             elif self.path == '/pcm':
                return self.audio_streaming(sample_bytes=2)
             elif self.path == '/float':
@@ -543,18 +532,25 @@ def meter_power():
                ps = np.average(power, axis=0)
                ps = 20 * np.log10((ps + resolution) / resolution)
 
-               if state.waterfall:
-                   print(''.join([ scale[i] for i in (len(scale) * ps / (max(ps) + resolution)).astype(np.int32) ]), f'{state.dbfs}')
+               current = waterfall_queue_inventory.current()
+               if state.waterfall or current:
+                   values = (len(scale) * ps / (max(ps) + resolution)).astype(np.int32)
+                   waterfall = ''.join([ scale[i] for i in values ])
+                   text = f'{waterfall} {state.dbfs}'
+                   if state.waterfall:
+                       print(text)
+                   for q in current:
+                       q.put(text)
 
-               text = None
-               for q in power_queue_inventory.current():
-                   if text is None:
-                       now = datetime.datetime.now(datetime.UTC)
-                       ds = now.strftime('%Y-%m-%d')
-                       ts = now.strftime('%H:%M:%S')
-                       dbm = ','.join(f'{d:.1f}' for d in ps)
-                       text = f'{ds},{ts},{fft_start:.0f},{fft_stop:.0f},{fft_step:.0f},{total_samples},{dbm}\n'
-                   q.put(text)
+               current = power_queue_inventory.current()
+               if current:
+                   now = datetime.datetime.now(datetime.UTC)
+                   ds = now.strftime('%Y-%m-%d')
+                   ts = now.strftime('%H:%M:%S')
+                   dbm = ','.join(f'{d:.1f}' for d in ps)
+                   text = f'{ds},{ts},{fft_start:.0f},{fft_stop:.0f},{fft_step:.0f},{total_samples},{dbm}'
+                   for q in current:
+                       q.put(text)
 
 
 #########################
@@ -563,12 +559,6 @@ def meter_power():
 
 def meter_set_peak(x):
     state.dbfs = np.round(20 * np.log10(x + state.resolution), 1)
-
-
-def meter_peak_tail():
-    q = peak_queue_inventory.checkout_item()
-    while True:
-        println(q.get())
 
     
 def meter_peak():
@@ -583,6 +573,8 @@ def meter_peak():
         count += d.size
         if count > 2 * state.refresh * state.rate:
             meter_set_peak(peak)
+            if state.meter and not state.waterfall:
+                println(state.dbfs)
             for q in peak_queue_inventory.current():
                 q.put(state.dbfs)
             peak = 0
@@ -707,9 +699,6 @@ def capture(radio):
     # start peak meter thread
     t = Thread(target=meter_peak, daemon=True)
     t.start()
-    if args.meter and not args.waterfall:
-        t = Thread(target=meter_peak_tail, daemon=True)
-        t.start()
 
     # start webserver thread
     t = Thread(target=server, daemon=True)
