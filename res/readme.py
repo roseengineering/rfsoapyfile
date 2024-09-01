@@ -125,21 +125,33 @@ $ curl localhost:8080/frequency
 ```
 
 ```
-$ curl localhost:8080/setting
-direct_samp: 0
-offset_tune: false
-iq_swap: false
-digital_agc: false
-biastee: false
+$ curl -s localhost:8080/setting
+sample_offset: "0"
+rig: "0"
+rig_rate: "0"
+rig_port: ""
 ```
 
 ```
-$ curl -i localhost:8080/float
+$ curl -i localhost:8080/float 
 HTTP/1.1 200 OK
-Server: BaseHTTP/0.6 Python/3.7.3
-Date: Sun, 31 Oct 2021 15:11:10 GMT
+Server: BaseHTTP/0.6 Python/3.12.5
+Date: Sun, 01 Sep 2024 15:08:34 GMT
 Transfer-Encoding: chunked
+Content-Disposition: inline; filename="10000000_48000_240901150834.wav"
 Content-Type: audio/wav
+
+Warning: Binary output can mess up your terminal. Use "--output -" to tell 
+Warning: curl to output it to your terminal anyway, or consider "--output 
+Warning: <FILE>" to save to a file.
+
+$ curl -i localhost:8080/cf32
+HTTP/1.1 200 OK
+Server: BaseHTTP/0.6 Python/3.12.5
+Date: Sun, 01 Sep 2024 15:08:38 GMT
+Transfer-Encoding: chunked
+Content-Disposition: inline; filename="10000000_48000_240901150838.cf32"
+Content-Type: audio/cf32
 
 Warning: Binary output can mess up your terminal. Use "--output -" to tell 
 Warning: curl to output it to your terminal anyway, or consider "--output 

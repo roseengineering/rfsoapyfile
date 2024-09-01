@@ -449,7 +449,7 @@ def server():
                data = ''
                for d in state.radio.getSettingInfo():
                    value = state.radio.readSetting(d.key)
-                   data += '{}: {}\n'.format(d.key, value)
+                   data += '{}: "{}"\n'.format(d.key, value)
             elif self.path == '/bins':
                data = state.bins
             elif self.path == '/rbw':
