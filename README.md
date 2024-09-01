@@ -44,19 +44,21 @@ Or you can use "pip install git+https://github.com/roseengineering/rfsoapyfile".
 $ soapyfile --help
 usage: soapyfile [-h] [-l] [-d DEVICE] [-f FREQUENCY] [-r RATE] [-g GAIN]
                     [-a] [--iq-swap] [--biastee] [--digital-agc]
-                    [--offset-tune] [--direct-samp DIRECT_SAMP] [--pcm16]
-                    [--cf32] [--rf64] [--notimestamp] [--pause]
-                    [--output OUTPUT] [--packet-size PACKET_SIZE]
+                    [--offset-tune] [--direct-samp DIRECT_SAMP]
+                    [--output OUTPUT] [--pause] [--pcm16] [--cf32] [--rf64]
+                    [--notimestamp] [--packet-size PACKET_SIZE]
                     [--buffer-size BUFFER_SIZE] [--bins BINS] [--rbw RBW]
                     [--integration INTEGRATION] [--average AVERAGE]
-                    [--hostname HOSTNAME] [--port PORT] [--refresh REFRESH]
-                    [--meter] [--waterfall]
+                    [--hostname HOSTNAME] [--port PORT] [--waterfall]
+                    [--meter] [--refresh REFRESH]
 
 options:
   -h, --help            show this help message and exit
   -l, --list            list available device names (default: False)
   -d DEVICE, --device DEVICE
-                        device string, eg driver=rtlsdr (default: None)
+                        device string, eg. driver=rtlsdr (default: None)
+
+device options:
   -f FREQUENCY, --frequency FREQUENCY
                         center frequency (Hz) (default: None)
   -r RATE, --rate RATE  sampling rate (Hz) (default: None)
@@ -68,28 +70,39 @@ options:
   --offset-tune         enable offset tune (default: False)
   --direct-samp DIRECT_SAMP
                         select I or Q channel: 1 or 2 (default: None)
+
+output file options:
+  --output OUTPUT       output file name (default: output)
+  --pause               no file output until unpaused (default: False)
   --pcm16               write 16-bit PCM samples for WAV (default: False)
   --cf32                write as .c32 raw file rather than WAV (default:
                         False)
   --rf64                write RF64 file for WAV (default: False)
-  --notimestamp         do not append timestamp to output file name (default:
-                        False)
-  --pause               pause recording (default: False)
-  --output OUTPUT       output file name (default: output)
+  --notimestamp         no timestamp appended file name (default: False)
+
+streaming options:
   --packet-size PACKET_SIZE
                         soapysdr packet size in bytes (default: 1024)
   --buffer-size BUFFER_SIZE
                         stream buffer size in MB (default: 256)
-  --bins BINS           size of the fft to use, overrides rbw (default: 64)
-  --rbw RBW             power resolution bandwidth (Hz) (default: None)
+
+power measurement options:
+  --bins BINS           size of the fft to use (default: 64)
+  --rbw RBW             resolution bandwidth (Hz), overrides bins (default:
+                        None)
   --integration INTEGRATION
-                        power integration time (default: 1)
-  --average AVERAGE     specific number of ffts to average (default: None)
+                        integration time for rbw option (default: 1)
+  --average AVERAGE     number of ffts to average, overrides integration
+                        (default: None)
+
+REST server options:
   --hostname HOSTNAME   REST server hostname (default: 0.0.0.0)
   --port PORT           REST server port number (default: 8080)
+
+console options:
+  --waterfall           show a streaming ascii waterfall (default: False)
+  --meter               show streaming peak values in dBFS (default: False)
   --refresh REFRESH     peak meter refresh (sec) (default: 1)
-  --meter               show streaming peak values (default: False)
-  --waterfall           show streaming ascii waterfall (default: False)
 ```
 
 

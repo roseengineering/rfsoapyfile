@@ -19,37 +19,51 @@ def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-l', '--list', action='store_true', help='list available device names')
-    parser.add_argument('-d', '--device', help='device string, eg driver=rtlsdr')
-    parser.add_argument('-f', '--frequency', type=float, help='center frequency (Hz)')
-    parser.add_argument('-r', '--rate', type=float, help='sampling rate (Hz)')
-    parser.add_argument('-g', '--gain', type=float, help='front end gain (dB)')
-    parser.add_argument('-a', '--agc', action='store_true', help='enable AGC')
-    parser.add_argument('--iq-swap', action='store_true', help='swap IQ signals')
-    parser.add_argument('--biastee', action='store_true', help='enable bias tee')
-    parser.add_argument('--digital-agc', action='store_true', help='enable digital AGC')
-    parser.add_argument('--offset-tune', action='store_true', help='enable offset tune')
-    parser.add_argument('--direct-samp', type=int, help='select I or Q channel: 1 or 2')
+    parser.add_argument('-d', '--device', help='device string, eg. driver=rtlsdr')
 
-    # options
-    parser.add_argument('--pcm16', action='store_true', help='write 16-bit PCM samples for WAV')
-    parser.add_argument('--cf32', action='store_true', help='write as .c32 raw file rather than WAV')
-    parser.add_argument('--rf64', action='store_true', help='write RF64 file for WAV')
-    parser.add_argument('--notimestamp', action='store_true', help='do not append timestamp to output file name')
-    parser.add_argument('--pause', action='store_true', help='pause recording')
-    parser.add_argument('--output', default='output', help='output file name')
-    parser.add_argument('--packet-size', default=1024, type=int, help='soapysdr packet size in bytes')
-    parser.add_argument('--buffer-size', default=256, type=int, help='stream buffer size in MB')
-    parser.add_argument('--bins', default=64, type=int, help='size of the fft to use for power measurements')
-    parser.add_argument('--rbw', type=float, help='fft power resolution bandwidth (Hz), overrides bins')
-    parser.add_argument('--integration', default=1, type=float, help='fft power integration time for rbw option')
-    parser.add_argument('--average', type=int, help='specific number of ffts to average')
+    # device options
+    group = parser.add_argument_group('device options')
+    group.add_argument('-f', '--frequency', type=float, help='center frequency (Hz)')
+    group.add_argument('-r', '--rate', type=float, help='sampling rate (Hz)')
+    group.add_argument('-g', '--gain', type=float, help='front end gain (dB)')
+    group.add_argument('-a', '--agc', action='store_true', help='enable AGC')
+    group.add_argument('--iq-swap', action='store_true', help='swap IQ signals')
+    group.add_argument('--biastee', action='store_true', help='enable bias tee')
+    group.add_argument('--digital-agc', action='store_true', help='enable digital AGC')
+    group.add_argument('--offset-tune', action='store_true', help='enable offset tune')
+    group.add_argument('--direct-samp', type=int, help='select I or Q channel: 1 or 2')
 
-    # rest server and peak meter
-    parser.add_argument('--hostname', default='0.0.0.0', help='REST server hostname')
-    parser.add_argument('--port', default=8080, type=int, help='REST server port number')
-    parser.add_argument('--refresh', default=1, type=float, help='peak meter refresh (sec)')
-    parser.add_argument('--meter', action='store_true', help='show streaming peak values')
-    parser.add_argument('--waterfall', action='store_true', help='show streaming ascii waterfall of power')
+    # output file options
+    group = parser.add_argument_group('output file options')
+    group.add_argument('--output', default='output', help='output file name')
+    group.add_argument('--pause', action='store_true', help='no file output until unpaused')
+    group.add_argument('--pcm16', action='store_true', help='write 16-bit PCM samples for WAV')
+    group.add_argument('--cf32', action='store_true', help='write as .c32 raw file rather than WAV')
+    group.add_argument('--rf64', action='store_true', help='write RF64 file for WAV')
+    group.add_argument('--notimestamp', action='store_true', help='no timestamp appended file name')
+
+    # streaming options
+    group = parser.add_argument_group('streaming options')
+    group.add_argument('--packet-size', default=1024, type=int, help='soapysdr packet size in bytes')
+    group.add_argument('--buffer-size', default=256, type=int, help='stream buffer size in MB')
+
+    # power measurment options
+    group = parser.add_argument_group('power measurement options')
+    group.add_argument('--bins', default=64, type=int, help='size of the fft to use ')
+    group.add_argument('--rbw', type=float, help='resolution bandwidth (Hz), overrides bins')
+    group.add_argument('--integration', default=1, type=float, help='integration time for rbw option')
+    group.add_argument('--average', type=int, help='number of ffts to average, overrides integration')
+
+    # rest server options
+    group = parser.add_argument_group('REST server options')
+    group.add_argument('--hostname', default='0.0.0.0', help='REST server hostname')
+    group.add_argument('--port', default=8080, type=int, help='REST server port number')
+
+    # console options
+    group = parser.add_argument_group('console options')
+    group.add_argument('--waterfall', action='store_true', help='show a streaming ascii waterfall')
+    group.add_argument('--meter', action='store_true', help='show streaming peak values in dBFS')
+    group.add_argument('--refresh', default=1, type=float, help='peak meter refresh (sec)')
     return parser.parse_args()
 
 
