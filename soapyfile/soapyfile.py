@@ -37,7 +37,7 @@ def parse_args():
     group = parser.add_argument_group('output file options')
     group.add_argument('--output', default='output', help='output file name')
     group.add_argument('--pause', action='store_true', help='no file output until unpaused')
-    group.add_argument('--pcm16', action='store_true', help='write 16-bit PCM samples for WAV')
+    group.add_argument('--pcm', action='store_true', help='write 16-bit PCM samples for WAV')
     group.add_argument('--cf32', action='store_true', help='write as .c32 raw file rather than WAV')
     group.add_argument('--rf64', action='store_true', help='write RF64 file for WAV')
     group.add_argument('--notimestamp', action='store_true', help='no timestamp appended file name')
@@ -273,7 +273,7 @@ class State:
     def initialize(
             self, refresh, pause, rate, 
             frequency, radio, notimestamp, output,
-            hostname, port, rf64, pcm16, cf32, rbw,
+            hostname, port, rf64, pcm, cf32, rbw,
             bins, integration, average, waterfall,
             **kw):
         self.refresh = refresh
@@ -284,7 +284,7 @@ class State:
         self.notimestamp = notimestamp
         self.output = output
         self.hostname = hostname
-        self.sample_bytes = 2 if pcm16 else 4
+        self.sample_bytes = 2 if pcm else 4
         self.port = port
         self.rf64 = rf64
         self.cf32 = cf32
@@ -514,6 +514,7 @@ def meter_power():
     state.bins = fft_n
     state.rbw = state.rate / fft_n
     state.average = average
+    state.integration = average * fft_time
 
     print(f'fft size = {state.bins}')
     print(f'average = {state.average}')

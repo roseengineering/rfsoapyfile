@@ -25,7 +25,7 @@ for controlling the capture and WAV recording remotely.
 
 The script will save the WAV stream in either the RF64 or WAV(32) file format.
 By default the recording is saved in the WAV(32) format using 32-bit IEEE floating point PCM samples.
-To save using 16-bit PCM samples use the --pcm16 option.
+To save using 16-bit PCM samples use the --pcm option.
 The SDR specific 'auxi' 
 metadata chunk, with record time and center frequency information, is added to the WAV audio file as well.
 
@@ -39,7 +39,7 @@ The script requires the numpy and SoapySDR Python libraries.
 ## Example
 
 ```
-$ soapyfile -f 100.1e6 -r 1e6 --pcm16 -g 42 --output out
+$ soapyfile -f 100.1e6 -r 1e6 --pcm -g 42 --output out
 ```
 
 ## Installation
@@ -61,18 +61,12 @@ Or you can use "pip install git+https://github.com/roseengineering/rfsoapyfile".
 
 The REST API is available off port 8080.  Use POST or PUT to change
 a program or radio setting.  Use GET to view it.  If a boolean is needed, the following
-strings are accepted: y, n, yes, no, true, and false.  Pausing the recording closes the WAV output file, while unpausing the recording creates
-a new output file.   If the option --notimestamp is enabled, this means any previously existing
-output file of the same name will be overwritten.
-Also, the SDR stream is always being captured even when the recording is paused.
+strings are accepted: y, n, yes, no, true, and false.  
+Pausing the recording closes the WAV output file, while unpausing the recording creates
+a new output file.   The SDR stream is always being captured even when the recording is paused.
+Note, if the option --notimestamp is enabled, any previously existing
+output file of the same name will be overwritten should you pause and unpause.
 
-The IQ data is streamed out of URL paths /pcm, /float, and /cf32.
-The /pcm endpoint streams 16 bit integer WAV.  The /float endpoint streams 32-bit
-float WAV.  While the /cf32 endpoint streams in raw cf32 format.  Run soapyfile with the --pause option if
-you only want to stream over HTTP.  (No SDR program that I know of currently supports HTTP streams,
-however it might be useful for remote operation or sharing a stream in real time.)
-
-Peak sample data (dBFS) and frequency power data (rtl_power output format) is streamed out of URL paths /peak and /power as text.
 
 ```
 PUT /quit              <bool>      stop capture and terminate program, yes or no
@@ -91,6 +85,21 @@ GET /pause             return whether the file recording is paused (bool)
 GET /setting           return a list of the available SDR soapy settings and their values
 GET /setting/<name>    return the value of the named soapy SDR setting
 
+GET /bins              return the size of the running FFT
+GET /rbw               return the RBW of the running FFT
+GET /average           return the number of FFTs being averaged
+GET /integration       return the integration time of the averaged FFTs
+```
+
+The IQ data is streamed out of URL paths /pcm, /float, and /cf32.
+The /pcm endpoint streams 16 bit integer WAV.  The /float endpoint streams 32-bit
+float WAV.  While the /cf32 endpoint streams in raw cf32 format.  Run soapyfile with the --pause option if
+you only want to stream over HTTP.  (No SDR program that I know of currently supports HTTP streams,
+however it might be useful for remote operation or sharing a stream in real time.)
+
+Peak sample data (dBFS) and frequency power data (rtl_power output format) is streamed out of URL paths /peak and /power as text.
+
+```
 GET /pcm               return a 16-bit integer PCM WAV HTTP audio stream
 GET /float             return a 32-bit IEEE floating point WAV HTTP audio stream
 GET /cf32              return a 32-bit IEEE floating point raw "cf32" HTTP audio stream
