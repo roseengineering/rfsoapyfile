@@ -534,8 +534,9 @@ def meter_power():
 
                current = waterfall_queue_inventory.current()
                if state.waterfall or current:
-                   values = (len(scale) * ps / (max(ps) + resolution)).astype(np.int32)
-                   waterfall = ''.join([ scale[i] for i in values ])
+                   ps -= min(ps)
+                   values = len(scale) * ps / (max(ps) + 1e-3)
+                   waterfall = ''.join([ scale[i] for i in values.astype(np.int32) ])
                    text = f'{waterfall} {state.dbfs}'
                    if state.waterfall:
                        print(text)
