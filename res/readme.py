@@ -3,7 +3,7 @@
 import os, subprocess 
 
 def run(command, language=''):
-    proc = subprocess.Popen("PYTHONPATH=. python3 soapyfile/" + command, shell=True, stdout=subprocess.PIPE)
+    proc = subprocess.Popen("PYTHONPATH=. python3 src/soapyfile/" + command, shell=True, stdout=subprocess.PIPE)
     buf = proc.stdout.read().decode()
     proc.wait()
     text = f"""
