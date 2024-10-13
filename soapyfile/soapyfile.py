@@ -537,7 +537,7 @@ def meter_power():
                    ps -= min(ps)
                    values = len(scale) * ps / (max(ps) + 1e-3)
                    waterfall = ''.join([ scale[i] for i in values.astype(np.int32) ])
-                   text = f'{waterfall} {state.dbfs}'
+                   text = f'{waterfall} {state.dbfs:.2f}'
                    if state.waterfall:
                        print(text)
                    for q in current:
