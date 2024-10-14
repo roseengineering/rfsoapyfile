@@ -52,7 +52,7 @@ usage: soapyfile [-h] [-l] [-d DEVICE] [-f FREQUENCY] [-r RATE] [-g GAIN]
                     [--hostname HOSTNAME] [--port PORT] [--waterfall]
                     [--meter] [--refresh REFRESH]
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   -l, --list            list available device names (default: False)
   -d DEVICE, --device DEVICE
