@@ -51,6 +51,7 @@ def parse_args():
     group.add_argument('--rbw', type=float, help='resolution bandwidth (Hz), overrides bins')
     group.add_argument('--integration', default=1, type=float, help='integration time for rbw option')
     group.add_argument('--average', type=int, help='number of ffts to average, overrides integration')
+    group.add_argument('--nopower', action='store_true', help='disable fft calculations')
 
     # rest server options
     group = parser.add_argument_group('REST server options')
@@ -694,8 +695,9 @@ def capture(radio):
     t.start()
 
     # start power thread
-    t = Thread(target=meter_power, daemon=True)
-    t.start()
+    if not args.nopower:
+        t = Thread(target=meter_power, daemon=True)
+        t.start()
 
     # start peak meter thread
     t = Thread(target=meter_peak, daemon=True)
@@ -710,7 +712,10 @@ def capture(radio):
     radio.activateStream(stream) 
     while not state.done:
         try:
-            radio.readStream(stream, [data], args.packet_size)
+            sr = radio.readStream(stream, [data], args.packet_size)
+            if sr.ret < 0:
+                print('failed to read stream, did sdr disconnect?')
+                break
             d = data.copy()
             for q in stream_queue_inventory.current():
                 q.put(d)
@@ -719,7 +724,8 @@ def capture(radio):
             break
         except KeyboardInterrupt:
             println('\nCapture interrupted, quitting.')
-            state.quit = True
+            break
+    state.quit = True
 
 
 #########################

@@ -19,7 +19,7 @@ print(f"""
 # rfsoapyfile
 
 A Python 3 script for capturing and recording a SDR stream to a WAV file, or serving it as a HTTP audio stream.
-The script is threaded for high performance, especially
+The script is threaded for performance, especially
 on a Raspberry Pi.  The script includes a REST API
 for controlling the capture and WAV recording remotely.
 
@@ -123,6 +123,8 @@ curl localhost:8080/agc
 curl localhost:8080/gain
 curl localhost:8080/peak
 curl localhost:8080/frequency
+curl localhost:8080/waterfall
+curl localhost:8080/power
 ```
 
 For example, running the following curl commands I get:
@@ -197,6 +199,13 @@ $ curl -s localhost:8080/waterfall
 ................................................................ -120.0
 ^C
 ```
+
+## Disabling FFT
+
+The FFT / power / waterfall feature uses a lot of compute power.
+If you are getting streaming errors, especially on the
+Raspberry Pi or Orange Pi, pass the --nopower option
+to turn off FFT computation. 
 
 ## Benchmarks
 

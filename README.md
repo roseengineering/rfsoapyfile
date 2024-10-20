@@ -3,7 +3,7 @@
 # rfsoapyfile
 
 A Python 3 script for capturing and recording a SDR stream to a WAV file, or serving it as a HTTP audio stream.
-The script is threaded for high performance, especially
+The script is threaded for performance, especially
 on a Raspberry Pi.  The script includes a REST API
 for controlling the capture and WAV recording remotely.
 
@@ -49,20 +49,19 @@ usage: soapyfile [-h] [-l] [-d DEVICE] [-f FREQUENCY] [-r RATE] [-g GAIN]
                     [--notimestamp] [--packet-size PACKET_SIZE]
                     [--buffer-size BUFFER_SIZE] [--bins BINS] [--rbw RBW]
                     [--integration INTEGRATION] [--average AVERAGE]
-                    [--hostname HOSTNAME] [--port PORT] [--waterfall]
-                    [--meter] [--refresh REFRESH]
+                    [--nopower] [--hostname HOSTNAME] [--port PORT]
+                    [--waterfall] [--meter] [--refresh REFRESH]
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -l, --list            list available device names (default: False)
-  -d DEVICE, --device DEVICE
-                        device string, eg. driver=rtlsdr (default: None)
+  -d, --device DEVICE   device string, eg. driver=rtlsdr (default: None)
 
 device options:
-  -f FREQUENCY, --frequency FREQUENCY
+  -f, --frequency FREQUENCY
                         center frequency (Hz) (default: None)
-  -r RATE, --rate RATE  sampling rate (Hz) (default: None)
-  -g GAIN, --gain GAIN  front end gain (dB) (default: None)
+  -r, --rate RATE       sampling rate (Hz) (default: None)
+  -g, --gain GAIN       front end gain (dB) (default: None)
   -a, --agc             enable AGC (default: False)
   --iq-swap             swap IQ signals (default: False)
   --biastee             enable bias tee (default: False)
@@ -94,6 +93,7 @@ power measurement options:
                         integration time for rbw option (default: 1)
   --average AVERAGE     number of ffts to average, overrides integration
                         (default: None)
+  --nopower             disable fft calculations (default: False)
 
 REST server options:
   --hostname HOSTNAME   REST server hostname (default: 0.0.0.0)
@@ -172,6 +172,8 @@ curl localhost:8080/agc
 curl localhost:8080/gain
 curl localhost:8080/peak
 curl localhost:8080/frequency
+curl localhost:8080/waterfall
+curl localhost:8080/power
 ```
 
 For example, running the following curl commands I get:
@@ -246,6 +248,13 @@ $ curl -s localhost:8080/waterfall
 ................................................................ -120.0
 ^C
 ```
+
+## Disabling FFT
+
+The FFT / power / waterfall feature uses a lot of compute power.
+If you are getting streaming errors, especially on the
+Raspberry Pi or Orange Pi, pass the --nopower option
+to turn off FFT computation. 
 
 ## Benchmarks
 
